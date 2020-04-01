@@ -9,6 +9,8 @@ import time
 import cupy as cp
 import numpy as np
 import pyphret.functions as pf
+import matplotlib.pyplot as plt
+
 
 # %% GENERAL UTILITIES
 # verbose status update and timing
@@ -43,7 +45,7 @@ def generateInitialGuess(fftmagnitude, rec_prior, phase_prior):
     return g_k
 
 
-def generateMask(masked, size, xp = None):
+def generateMask(g_k, masked, size, xp = None):
     # object support constraint
     if (masked is None) or (masked =="full"):
         print('Uniform full mask')
@@ -73,8 +75,8 @@ def generateMask(masked, size, xp = None):
         print('Spherical mask')
         mask = pf.spherical_mask3D(size[0], size[1], size[2])
 
-    # elif masked == "autocorrelation":
-    #     mask = (autocorrelation > (xp.max(autocorrelation)*0.05))
+    elif (masked == "autocorrelation"):
+        mask = pf.autocorrelation_maskND(g_k, 0.04)
 
     # not supported decisions return a full mask
     else:
@@ -161,24 +163,53 @@ def HIO(fftmagnitude, g_k, mask, beta, steps):
 
 
 # ONGOING DEVELOPMENT - it requires more memory than ER implementation
-def HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode):
-    print('Running Phase-Retrieval iterations using Hybrid Input-Output method')
+def HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode, measure=False, parameters=[100, 30, 1.5, 0.9, 1]):
+    print('Running Phase-Retrieval iterations using Hybrid Input-Output method with options')
     xp = cp.get_array_module(fftmagnitude)
     t = time.time()    
+    error = xp.zeros(steps)
+    normalization = 1 / (fftmagnitude.size * xp.linalg.norm(fftmagnitude))
+    epsilon = parameters[4]
     
+    if epsilon == 0:
+        print('WARNING: you are actually running ER method, if you want to get back to HIO set parammeters[4]=1')
+    
+    if mode == 'normal':
+        print('Normal HIO implementation with epsilon = ' + str(epsilon))
+
     if mode == 'shrink-wrap':
-        maskupdate = 20
-        nupdates = -int(-steps//maskupdate)
-        sigma = xp.linspace(3, 1.5, nupdates)
         counter = -1
-        # prior 
-        g_k = pf.fouriermod2autocorrelation(fftmagnitude)
-        mask = pf.autocorrelation_maskND(g_k,0.04)
+        maskupdate = parameters[0]
+        nupdates = -int(-steps//maskupdate)
+        start_sigma = parameters[1]
+        stop_sigma = parameters[2]
+        print('The mask evolves using shrink-wrap rules every ' + str(maskupdate) + ' steps')
+        print('Starting smoothing with sigma: ' + str(start_sigma))
+        print('Ending smoothing with sigma: ' + str(stop_sigma))
+        sigma = xp.linspace(start_sigma, stop_sigma, nupdates)
+        # mask = pf.autocorrelation_maskND(g_k, 0.04)
+        # g_k = pf.fouriermod2autocorrelation(fftmagnitude)
         
     if mode == 'sparsity':
-        maskupdate = 100
-
+        counter = -1
+        maskupdate = parameters[0]
+        nupdates = -int(-steps//maskupdate)
+        # mask = pf.autocorrelation_maskND(g_k, 0.04)
+        start_sparsity = xp.sum(mask)/mask.size
+        end_sparsity = 0.1
+        print('The mask evolves using sparsity rules every ' + str(maskupdate) + ' steps')
+        print('Starting sparsity: ' + str(start_sparsity))
+        print('End sparsity: ' + str(end_sparsity))
+        sparsity = xp.linspace(start_sparsity, end_sparsity, nupdates)
         
+    if mode == 'exponential-average':
+        alpha = parameters[3]
+        g_exp = g_k
+        print('The solution evolves using exponentially weighted average with alpha ' + str(alpha))
+        print('... it means the exponential average is done on past ' + str(1/(1-alpha)) + 'estimates')
+
+
+    # iteration starts here
     for k in range(0,steps):
         t = algorithmStatus(t, k, steps)
 
@@ -188,69 +219,42 @@ def HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode):
         gp_k = xp.exp(1j * gp_k)                     # alias for Gp_k
         gp_k = fftmagnitude * gp_k                   # alias for Gp_k
         gp_k = xp.fft.irfftn(gp_k)                   # alias for gp_k
-                
+        
         # 4th step - updates for elements that violate object domain constraints
         index = xp.logical_and(gp_k>0, mask) 
         g_k[index] = gp_k[index]
         index = xp.logical_not(index)
-        g_k[index] = g_k[index] - (beta*gp_k[index])
+        g_k[index] = epsilon * (g_k[index] - (beta*gp_k[index]))
 
+        # 5th step - Shrink-wrap implementation
         if mode == 'shrink-wrap':
-            # 5th step - Shrink-wrap implementation
             if (k+1) % maskupdate == 0:
                 counter = counter+1
                 print("smoothed mask with sigma = ", sigma[counter])   
-
-            gp_k = pf.my_gaussblur(g_k, sigma[counter])
-            mask = pf.threshold_maskND(gp_k, 0.20)
-
-        if mode == 'sparsity' and (k+1) % maskupdate == 0:
-            mask = pf.sparsity_maskND(g_k, 0.10)
-
-
-    return (g_k, mask)
-
-
-# ONGOING DEVELOPMENT - it requires more memory than ER implementation
-def HIO_shrinkwrap(fftmagnitude, g_k, mask, beta, steps):
-    print('Running Phase-Retrieval iterations using Hybrid Input-Output method')
-    print('The mask evolves using shrink-wrap rules every 20 steps')
-    xp = cp.get_array_module(fftmagnitude)
-    t = time.time()  
-    
-    maskupdate = 20
-    nupdates = -int(-steps//maskupdate)
-    sigma = xp.linspace(3, 1.5, nupdates)
-    counter = -1
-
-    g_k = pf.fouriermod2autocorrelation(fftmagnitude)
-    # mask = pf.autocorrelation_maskND(g_k,0.04)
-
-    for k in range(0,steps):
-        t = algorithmStatus(t, k, steps)
-
-        # phase retrieval four-iterations, this sequence minimize memory usage
-        gp_k = xp.fft.rfftn(g_k)                     # alias for G_k
-        gp_k = xp.angle(gp_k)                        # alias for Phi_k
-        gp_k = xp.exp(1j * gp_k)                     # alias for Gp_k
-        gp_k = fftmagnitude * gp_k                   # alias for Gp_k
-        gp_k = xp.fft.irfftn(gp_k)                   # alias for gp_k
+                gp_k = pf.my_gaussblur(g_k, sigma[counter])
+                mask = pf.threshold_maskND(gp_k, 0.01)
                 
-        # 4th step - updates for elements that violate object domain constraints
-        index = xp.logical_and(gp_k>0, mask) 
-        g_k[index] = gp_k[index]
-        index = xp.logical_not(index)
-        g_k[index] = g_k[index] - (beta*gp_k[index])
-
         # 5th step - Shrink-wrap implementation
-        if (k+1) % maskupdate == 0:
-            counter = counter+1
-            print("smoothed mask with sigma = ", sigma[counter])   
-        
-        gp_k = pf.my_gaussblur(g_k, sigma[counter])
-        mask = pf.threshold_maskND(gp_k, 0.20)
+        if mode == 'sparsity':
+            if (k+1) % maskupdate == 0:
+                counter = counter+1
+                print("smoothed mask with sigma = ", sparsity[counter])
+                mask = pf.sparsity_maskND(g_k, 0.1)
+                
+        # update process following exponential average rules
+        if mode == 'exponential-average':
+            g_exp = alpha * g_exp + (1-alpha) * g_k
+          
+        # measure the solution distance
+        if measure == True:
+            gp_k = xp.fft.rfftn(g_k)                     # alias for G_k
+            gp_k = xp.abs(gp_k)                        # alias for Phi_k
+            error[k] = xp.linalg.norm(fftmagnitude - gp_k) * normalization
 
-    return (g_k, mask)
+    if mode == 'exponential-average':
+        g_k = g_exp
+
+    return (g_k, mask, error)
 
 
 # APPARENTLY WORKING - it requires more memory than ER implementation
@@ -367,10 +371,27 @@ def ER_inplaceFFT(fftmagnitude, g_k, mask, steps):
 
 
 # %% MAIN ALGORITHM - every functions above is called within this
+
+""" 
+algorithm options:
+    fftmagnitude: modulus of the recorded Fourier transform
+    rec_prior: starting guess for the object
+    phase_prior: starting guess for the Foruier phase
+    
+    masked: 'full', 'half', 'circular', 'spherical'
+    method: 'ER', 'II', 'OO', 'HIO', 'OSS', 'ER_pedantic', 'ER_inplaceFFT', 'HIO_mode', 'HIO_shrinkwrap'
+    mode: 'classical', 'normal', 'shrink-wrap', 'sparsity'
+    
+    beta: feedback parameter
+    steps: number of phase retrieval steps
+
+"""
+
 def phaseRet(fftmagnitude, 
-             rec_prior=None, phase_prior=None, masked=None,
-             method='ER', mode='normal',
-             beta=0.9, steps=200):
+             rec_prior=None, phase_prior=None, 
+             masked='full', method='ER', mode='normal',
+             measure = None,
+             beta=0.9, steps=200, parameters=[100, 30, 1.5, 0.9]):
 
     # start computing time from the first call 
     t = time.time()    
@@ -381,109 +402,43 @@ def phaseRet(fftmagnitude,
     # check if input values are allowed for the simulation
     assert beta > 0, 'the value for beta should be a positive'
     assert steps >= 0, 'number of steps should be a positive number'    
-    assert (mode=='normal') or (mode=='shrink-wrap') or (mode=='sparsity'), 'the mode should be \'normal\' or \'shrink-wrap\''
+    assert (masked=='full') or (masked=='half') or (masked=='circular') or (masked=='spherical') or (masked=='autocorrelation')
+    assert (mode=='classical') or (mode=='normal') or (mode=='shrink-wrap') or (mode=='sparsity') or (mode=='exponential-average'),\
+        'the mode should be \'normal\' or \'shrink-wrap\''
     assert (method=='ER') or (method=='II') or (method=='OO') or (method=='HIO') or (method=='HIO_shrinkwrap') or (method=='OSS') or (method=='ER_pedantic') or (method=='ER_inplaceFFT'),\
         'the available methods are: \'ER\', \'II\', \'OO\', \'HIO\', \'OSS\', \'ER_pedantic\', \'ER_inplaceFFT\''
 
     # the initial guess is computed with the prior information
     g_k  = generateInitialGuess(fftmagnitude, rec_prior, phase_prior)
-    mask = generateMask(masked, size=g_k.shape, xp=xp)
+    mask = generateMask(g_k, masked, size=g_k.shape, xp=xp)
+    error = None
 
     # calls to Phase Retrieval functions. They take an estimate g_k and throw the next one g_k after steps iterations
     if method=='ER_pedantic': 
         (g_k, mask) = ER_pedantic(fftmagnitude, g_k, mask, steps)
+
     elif method=='ER':
         (g_k, mask) = ER(fftmagnitude, g_k, mask, steps)
+
     elif method=='II':
         (g_k, mask) = II(fftmagnitude, g_k, mask, beta, steps)
+
     elif method=='OO':
         (g_k, mask) = OO(fftmagnitude, g_k, mask, beta, steps)
-    elif method=='HIO' and mode!='sparsity':
+
+    elif method=='HIO' and mode=='classical':
         (g_k, mask) = HIO(fftmagnitude, g_k, mask, beta, steps)
-    elif method=='HIO' and mode=='sparsity':
-        (g_k, mask) = HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode)
-        
-    elif method=='HIO_shrinkwrap':
-        (g_k, mask) = HIO_shrinkwrap(fftmagnitude, g_k, mask, beta, steps)
+
+    elif (method=='HIO' and mode=='normal') or (method=='HIO' and mode=='sparsity') or (method=='HIO' and mode=='shrink-wrap') or (method=='HIO' and mode=='exponential-average'):
+        (g_k, mask, error) = HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode, measure, parameters)
+
     elif method=='OSS':
         (g_k, mask) = OSS(fftmagnitude, g_k, mask, beta, steps)
+
     elif method=='ER_inplaceFFT':
-        (g_k, mask) = ER_inplaceFFT(fftmagnitude, g_k, mask, steps)
-            
-    return (g_k * mask, mask)
+        (g_k, mask) = ER_inplaceFFT(fftmagnitude, g_k, mask, steps)     
+        
+    print('P.S. --> Algorithm has finished, the correct solution is g_k * mask!')
+    return (g_k, mask, error)
         
         
-
-
-# %% TEMP CHUNK OF WORKING CODE
-    # # This is a pedagogical implementation for the error reduction protocol
-    # if method=='ER_pedantic': 
-    #     g_k = ER_pedantic(fftmagnitude, g_k, mask, steps)
-            
-    # # ONGOING DEVELOPMENT - supports volumes up to 1024x1024x512 double
-    # elif method=='ER':
-    #     g_k = ER(fftmagnitude, g_k, mask, steps)
-    #     # print('Running Error Reduction iterations')
-    #     # for k in range(0,steps):
-    #     #     if k % 100 == 0:
-    #     #         elapsed = time.time() - t
-    #     #         print("step", k, "of", steps, "- elapsed time per step", elapsed/100)
-    #     #         t = time.time()
- 
-    #     #     # phase retrieval four-iterations, this sequence minimize memory usage
-    #     #     g_k = xp.fft.rfftn(g_k)                    # alias for G_k
-    #     #     g_k = xp.angle(g_k)                        # alias for Phi_k
-    #     #     g_k = fftmagnitude * xp.exp(1j * g_k)      # alias for Gp_k
-    #     #     g_k = xp.fft.irfftn(g_k)                   # alias for gp_k
-            
-    #     #     # 4th step - updates for elements that violate object domain constraints
-    #     #     index = (g_k<0)
-    #     #     g_k[index] = 0
-    
-    # # ONGOING DEVELOPMENT - it requires more memory than ER implementation
-    # elif method=='HIO':
-    #     g_k = HIO(fftmagnitude, g_k, mask, beta, steps)
-    #     # print('Running Hybrid Input-Output iterations')
-    #     # for k in range(0,steps):
-    #     #     if k % 100 == 0:
-    #     #         elapsed = time.time() - t
-    #     #         print("step", k, "of", steps, "- elapsed time per step", elapsed/100)
-    #     #         t = time.time()
-
-    #     #     # phase retrieval four-iterations, this sequence minimize memory usage
-    #     #     gp_k = xp.fft.rfftn(g_k)                     # alias for G_k
-    #     #     gp_k = xp.angle(gp_k)                        # alias for Phi_k
-    #     #     gp_k = xp.exp(1j * gp_k)      # alias for Gp_k
-    #     #     gp_k = fftmagnitude * gp_k      # alias for Gp_k
-    #     #     gp_k = xp.fft.irfftn(gp_k)                   # alias for gp_k
-            
-    #     #     # 4th step - updates for elements that violate object domain constraints
-    #     #     index = (gp_k>0) 
-    #     #     g_k[index] = gp_k[index]
-    #     #     index = xp.logical_not(index)
-    #     #     g_k[index] = g_k[index] - (beta*gp_k[index])
-
-    # # Experimental implementation to try to save memory
-    # elif method=='ER_inplaceFFT':
-    #     g_k = ER_inplaceFFT(fftmagnitude, g_k, mask, steps)
-        
-    #     # # only cupyx.scipy supports in place fft. but I don't see memory consumption difference 
-    #     # from cupyx.scipy import fft
-    #     # import cupyx.scipy as yp
-        
-    #     # for k in range(0,steps):
-    #     #     if k % 100 == 0:
-    #     #         elapsed = time.time() - t
-    #     #         print("step", k, "of", steps, "- elapsed time per step", elapsed/100)
-    #     #         t = time.time()
-           
-    #     #     # phase retrieval four-iterations, this sequence minimize memory usage
-    #     #     g_k = yp.fft.rfftn(g_k, overwrite_x=True)  # alias for G_k
-    #     #     g_k = xp.angle(g_k)                        # alias for Phi_k
-    #     #     g_k = fftmagnitude * xp.exp(1j * g_k)      # alias for Gp_k
-    #     #     g_k = yp.fft.irfftn(g_k, overwrite_x=True)                   # alias for gp_k
-            
-    #     #     # 4th step - updates for elements that violate object domain constraints
-    #     #     index = (g_k<0)
-    #     #     g_k[index] = 0
-
