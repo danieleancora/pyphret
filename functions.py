@@ -17,39 +17,18 @@ import matplotlib.pyplot as plt
 
 
 # %% alignment routines
-# DEPRECATED
-# def my_findshift3d(function1, function2):
-#     xcorr0 = np.correlate( np.mean(function1, axis=(1,2)), np.mean(function2, axis=(1,2)) , "full")
-#     xcorr1 = np.correlate( np.mean(function1, axis=(0,2)), np.mean(function2, axis=(0,2)) , "full")
-#     xcorr2 = np.correlate( np.mean(function1, axis=(0,1)), np.mean(function2, axis=(0,1)) , "full")
-        
-#     shift = (- function1.shape[0] + 1 + np.argmax(xcorr0), 
-#              - function1.shape[1] + 1 + np.argmax(xcorr1), 
-#              - function1.shape[2] + 1 + np.argmax(xcorr2))
-#     return shift
+# flip all axis, it should return a view not a new vector. I need to write this because cupy flip does not work the same way as numpy
+def axisflip(kernel):
+    if kernel.ndim==1:
+        kernel_flip = kernel[::-1]
+    elif kernel.ndim==2:
+        kernel_flip = kernel[::-1,::-1]
+    elif kernel.ndim==3:
+        kernel_flip = kernel[::-1,::-1,::-1]
+    elif kernel.ndim==4:
+        kernel_flip = kernel[::-1,::-1,::-1,::-1]
 
-# # align function2 to position of function1 that maximises the correlation
-# def my_align3d(function1, function2):    
-#     shift = my_findshift3d(function1, function2)
-#     print(shift)
-#     return np.roll(function2, shift, axis=(0,1,2))
-
-# def my_align3d_flip(function1, function2):    
-#     shift1 = my_findshift3d(function1, function2)
-#     shift2 = my_findshift3d(function1, function2[::-1,::-1,::-1])
-#     print(shift1)
-    
-#     noflip  = np.roll(function2, shift1, axis=(0,1,2))
-#     yesflip = np.roll(function2[::-1,::-1,::-1], shift2, axis=(0,1,2))
-    
-#     product_noflip = function1 * noflip
-#     product_yesflip = function1 * yesflip
-    
-#     if np.sum(product_noflip) <= np.sum(product_yesflip):
-#         noflip = yesflip
-#         print('flipped')
-    
-#     return noflip
+    return kernel_flip
 
 
 # splitted cross-correlation
@@ -118,6 +97,22 @@ def my_alignND(function1, function2, mode='normal'):
     return function2
 
 
+def my_centerND(function):
+    maxvalue = function.max()
+    maxposition = np.unravel_index(np.argmax(function), function.shape)
+    print('Max position is ' + str(maxposition))
+
+    center = tuple(int(x/2) for x in function.shape)
+    
+    shift = np.asarray(center) - np.asarray(maxposition)
+    shift = tuple(shift)
+    print('The shift between images is ' + str(shift))
+
+    for i in range(0, len(shift)):
+        function = np.roll(function, shift[i], axis=i)
+
+    return function
+
 
 # %% convolution correlation routines
 def my_convolution(function1, function2):
@@ -138,14 +133,23 @@ def my_correlation(function1, function2):
 #     temp = xp.fft.fftshift(temp)
 #     return temp
 
-# def my_correlation(function1, function2):
-#     xp = cp.get_array_module(function1)
+def my_correlationCentered(function1, function2):
+    xp = cp.get_array_module(function1)
 
-#     temp = xp.conj(xp.fft.rfftn(function1))
-#     temp = temp * xp.fft.rfftn(function2)
-#     temp = xp.fft.irfftn(temp)
-#     temp = xp.fft.fftshift(temp)
-#     return temp
+    temp = xp.conj(xp.fft.rfftn(function1))
+    temp = temp * xp.fft.rfftn(function2)
+    
+    # trying to remove residual shifts
+    # temp = xp.abs(temp)
+    
+    temp = xp.fft.irfftn(temp)
+    temp = xp.fft.fftshift(temp)
+    
+    # trying to remove residual shifts
+    temp = autocorrelation2fouriermod(temp)
+    temp = fouriermod2autocorrelation(temp)
+    
+    return temp
 
 def my_autocorrelation(x):
     return my_correlation(x, x)
@@ -271,6 +275,20 @@ def sparsity_maskND(function, fraction=0):
     return mask
 
 
+# %% average
+
+def weighted_average(x, axis=0, mode='poisson'):
+    xp = cp.get_array_module(x)
+
+    if mode=='poisson':
+        w = xp.abs(x)
+        w = xp.sqrt(w)
+        # w_sum = xp.sum(w, axis=axis)
+
+        mean = xp.sum((w*x), axis=axis)
+        # mean = mean / w_sum
+        
+    return mean
 
 
 
