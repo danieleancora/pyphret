@@ -22,16 +22,54 @@ def algorithmStatus(t, k, steps):
     return t
 
 
-def generateInitialGuess(fftmagnitude, rec_prior, phase_prior):
+def fourierDistance(fftmagnitude, g_k):
+    xp = cp.get_array_module(fftmagnitude)
+    normalization = 1 / (fftmagnitude.size * xp.linalg.norm(fftmagnitude))
+    gp_k = xp.fft.rfftn(g_k)                     # alias for G_k
+    gp_k = xp.abs(gp_k)                        # alias for Phi_k
+    distance = xp.linalg.norm(fftmagnitude - gp_k) * normalization
+    del gp_k
+
+    return distance
+
+
+def generateInitialGuess(fftmagnitude, rec_prior, phase_prior, attempts=10):
     xp = cp.get_array_module(fftmagnitude)
 
     # random phase if prior is None, otherwise start with the prior Fourier
     if (rec_prior is None) and (phase_prior is None):
         xp.random.seed()
+
+        # g_k = 2*(xp.pi) * xp.random.rand(*fftmagnitude.shape)
+        # g_k = fftmagnitude * xp.exp(1j*g_k)
+        # g_k =  xp.fft.irfftn(g_k)
+        # distance_best = fourierDistance(fftmagnitude, g_k)
+
+        distance_best = xp.inf
+
+        for attempt in range(attempts+1):
+            seed = int(xp.random.randint(2**16))
+            xp.random.seed(seed)
+            
+            g_k = 2*(xp.pi) * xp.random.rand(*fftmagnitude.shape)
+            g_k = fftmagnitude * xp.exp(1j*g_k)
+            g_k =  xp.fft.irfftn(g_k)
+            distance = fourierDistance(fftmagnitude, g_k)
+            print('Phase Attempt: ' + str(attempt) + ' error ' + str(distance))
+            
+            if distance < distance_best:
+                distance_best = distance
+                bestseed = seed
+                print('Updated!!!')
+
+        # generate again the guess based on the best seed found
+        xp.random.seed(bestseed)
         g_k = 2*(xp.pi) * xp.random.rand(*fftmagnitude.shape)
         g_k = fftmagnitude * xp.exp(1j*g_k)
         g_k =  xp.fft.irfftn(g_k)
-        # g_k =  xp.real(xp.fft.irfftn(fftmagnitude*xp.exp(1j*2*xp.pi*xp.random.rand(*fftmagnitude.shape))))
+        distance = fourierDistance(fftmagnitude, g_k)
+        print('Phase choosen: ' + str(attempt) + ' error ' + str(distance))
+
     elif (rec_prior is not None) and (phase_prior is None):
         g_k = rec_prior
     elif (rec_prior is None) and (phase_prior is not None):
@@ -41,6 +79,9 @@ def generateInitialGuess(fftmagnitude, rec_prior, phase_prior):
     # free memory
     rec_prior = None
     phase_prior = None
+    # gp_k = None
+    distance = None
+    distance_best = None
     
     return g_k
 
@@ -139,10 +180,16 @@ def ER(fftmagnitude, g_k, mask, steps):
 
 
 # ONGOING DEVELOPMENT - it requires more memory than ER implementation
-def HIO(fftmagnitude, g_k, mask, beta, steps):
+def HIO(fftmagnitude, g_k, mask, beta, steps, measure=False):
     print('Running Phase-Retrieval iterations using Hybrid Input-Output method')
     xp = cp.get_array_module(fftmagnitude)
     t = time.time()    
+    error = None
+
+    if measure == True:
+        normalization = 1 / (fftmagnitude.size * xp.linalg.norm(fftmagnitude))
+        error = xp.zeros(steps)
+
     for k in range(0,steps):
         t = algorithmStatus(t, k, steps)
 
@@ -159,7 +206,13 @@ def HIO(fftmagnitude, g_k, mask, beta, steps):
         index = xp.logical_not(index)
         g_k[index] = g_k[index] - (beta*gp_k[index])
 
-    return (g_k, mask)
+        # measure the solution distance
+        if measure == True:
+            gp_k = xp.fft.rfftn(g_k)                     # alias for G_k
+            gp_k = xp.abs(gp_k)                        # alias for Phi_k
+            error[k] = xp.linalg.norm(fftmagnitude - gp_k) * normalization
+
+    return (g_k, mask, error)
 
 
 # ONGOING DEVELOPMENT - it requires more memory than ER implementation
@@ -388,9 +441,9 @@ algorithm options:
 """
 
 def phaseRet(fftmagnitude, 
-             rec_prior=None, phase_prior=None, 
+             rec_prior=None, phase_prior=None, attempts=10,
              masked='full', method='ER', mode='normal',
-             measure = None,
+             measure = False,
              beta=0.9, steps=200, parameters=[100, 30, 1.5, 0.9]):
 
     # start computing time from the first call 
@@ -409,9 +462,10 @@ def phaseRet(fftmagnitude,
         'the available methods are: \'ER\', \'II\', \'OO\', \'HIO\', \'OSS\', \'ER_pedantic\', \'ER_inplaceFFT\''
 
     # the initial guess is computed with the prior information
-    g_k  = generateInitialGuess(fftmagnitude, rec_prior, phase_prior)
+    g_k  = generateInitialGuess(fftmagnitude, rec_prior, phase_prior, attempts)
     mask = generateMask(g_k, masked, size=g_k.shape, xp=xp)
     error = None
+    gp_k = None
 
     # calls to Phase Retrieval functions. They take an estimate g_k and throw the next one g_k after steps iterations
     if method=='ER_pedantic': 
@@ -427,7 +481,7 @@ def phaseRet(fftmagnitude,
         (g_k, mask) = OO(fftmagnitude, g_k, mask, beta, steps)
 
     elif method=='HIO' and mode=='classical':
-        (g_k, mask) = HIO(fftmagnitude, g_k, mask, beta, steps)
+        (g_k, mask, error) = HIO(fftmagnitude, g_k, mask, beta, steps, measure)
 
     elif (method=='HIO' and mode=='normal') or (method=='HIO' and mode=='sparsity') or (method=='HIO' and mode=='shrink-wrap') or (method=='HIO' and mode=='exponential-average'):
         (g_k, mask, error) = HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode, measure, parameters)
@@ -437,7 +491,17 @@ def phaseRet(fftmagnitude,
 
     elif method=='ER_inplaceFFT':
         (g_k, mask) = ER_inplaceFFT(fftmagnitude, g_k, mask, steps)     
-        
+   
+    # measure the solution distance
+    if measure == False:
+        error = xp.zeros(1,)
+        normalization = 1 / (fftmagnitude.size * xp.linalg.norm(fftmagnitude))
+        gp_k = xp.fft.rfftn(g_k)                        # alias for G_k
+        gp_k = xp.abs(gp_k)                             # alias for Phi_k
+        error[0] = xp.linalg.norm(fftmagnitude - gp_k) * normalization
+
+    del gp_k        
+
     print('P.S. --> Algorithm has finished, the correct solution is g_k * mask!')
     return (g_k, mask, error)
         
