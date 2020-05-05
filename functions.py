@@ -123,12 +123,41 @@ def my_correlation(function1, function2):
     xp = cp.get_array_module(function1)
     return xp.fft.fftshift((xp.fft.irfftn(xp.conj(xp.fft.rfftn(function1)) * xp.fft.rfftn(function2))))
 
-
-# def my_convolution(function1, function2):
-#     xp = cp.get_array_module(function1)
+def my_convcorr(function1, function2):
+    xp = cp.get_array_module(function1)
     
-#     temp = xp.fft.rfftn(function1)
-#     temp = temp * xp.fft.rfftn(function2)
+    temp = xp.fft.rfftn(function2)
+    temp = xp.conj((xp.fft.rfftn(function1)) * temp) * temp
+
+    # temp = xp.square(xp.abs(xp.fft.rfftn(function2)))
+    # temp = xp.conj(xp.fft.rfftn(function1)) * temp
+
+    # temp = xp.fft.rfftn(function2)
+    # temp = temp.real**2 + temp.imag**2
+    # temp = xp.conj(xp.fft.rfftn(function1)) * temp
+    
+    # return xp.fft.fftshift((xp.fft.irfftn(temp)))
+    return ((xp.fft.irfftn(temp)))
+
+
+def my_convcorr_sqfft(function1, function2):
+    xp = cp.get_array_module(function1)
+    temp = xp.conj(xp.fft.rfftn(function1)) * function2
+    return ((xp.fft.irfftn(temp)))
+
+
+def my_correlation_withfft(function1, function2):
+    xp = cp.get_array_module(function1)
+    temp = xp.conj(xp.fft.rfftn(function1)) * function2
+    return (xp.fft.fftshift(xp.fft.irfftn(temp)))
+
+
+
+# def my_convolution2(function1, function2):
+#     xp = cp.get_array_module(function1)
+#     temp1 = xp.fft.rfftn(function1)
+#     temp = temp1 * xp.fft.rfftn(function2)
+#     del temp1
 #     temp = xp.fft.irfftn(temp)
 #     temp = xp.fft.fftshift(temp)
 #     return temp
@@ -138,10 +167,7 @@ def my_correlationCentered(function1, function2):
 
     temp = xp.conj(xp.fft.rfftn(function1))
     temp = temp * xp.fft.rfftn(function2)
-    
-    # trying to remove residual shifts
-    # temp = xp.abs(temp)
-    
+       
     temp = xp.fft.irfftn(temp)
     temp = xp.fft.fftshift(temp)
     
@@ -272,6 +298,18 @@ def sparsity_maskND(function, fraction=0):
     # masking out all the min-k values 
     mask = (function >= xp.min(linear[idx]))
     
+    return mask
+
+
+def anular_mask2D(h, w, radius=[100,96]):
+    center = (int(w/2), int(h/2))
+    Y, X = np.ogrid[:h, :w]
+    dist_from_center = np.sqrt((X - center[0])**2 + (Y-center[1])**2)
+
+    mask1 = (dist_from_center <= radius[0])
+    mask2 = (dist_from_center <= radius[1])    
+    
+    mask = np.bitwise_xor(mask1, mask2)
     return mask
 
 
