@@ -12,7 +12,7 @@ import cupy as cp
 import numpy as np
 import cupyx.scipy
 from cupyx.scipy import ndimage
-from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip
+from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db
 
 
 # %% DENOISE ROUTINES
@@ -171,7 +171,6 @@ def maxAPosteriori_smallKernel(image, psf, iterations=10, clip=True, verbose=Fal
 
 # %% big kernel implemented with FFT, 
 # Here i call signal the image and kernel the psf, to differenciate from nonFFT implementations
-
 
 def richardsonLucy(signal, kernel, prior=np.float32(0), iterations=10, measure=True, clip=False, verbose=True):
     xp = cp.get_array_module(signal)
@@ -342,7 +341,7 @@ def anchorUpdate(signal, kernel, signal_deconv=np.float32(0), iterations=10, mea
     return signal_deconv, error
 
 
-
+# currently used function
 def anchorUpdate2(signal, kernel, signal_deconv=np.float32(0), iterations=10, measure=True, clip=False, verbose=True):
     xp = cp.get_array_module(signal)
     start_time = time.time()
@@ -389,6 +388,76 @@ def anchorUpdate2(signal, kernel, signal_deconv=np.float32(0), iterations=10, me
 
         # multiplicative update 
         signal_deconv *= my_convolution(relative_blur, kernel_mirror)
+                
+    if clip:
+        signal_deconv[signal_deconv > +1] = +1
+        signal_deconv[signal_deconv < -1] = -1
+
+    print("\n\n Algorithm finished. Performance:")
+    print("--- %s seconds ----" % (time.time() - start_time))
+    print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
+    return signal_deconv, error
+
+
+def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B', iterations=10, measure=True, clip=False, verbose=True):
+    xp = cp.get_array_module(signal)
+    start_time = time.time()
+
+    signal /= signal.sum()
+    kernel /= kernel.sum()
+
+    # compute the norm of the fourier transform of the kernel associated with the IEEE paper
+    if kerneltype == 'A':
+        kernel = xp.abs(xp.fft.rfftn(kernel))
+    elif kerneltype == 'B':
+        kernel = xp.square(xp.abs(xp.fft.rfftn(kernel)))
+    elif kerneltype == 'C':
+        kernel = xp.abs(xp.fft.irfftn(kernel))
+
+    epsilon = 1e-7
+
+    # starting guess with a flat image
+    if signal_deconv.any()==0:
+        xp.random.seed(0)
+        signal_deconv = xp.full(signal.shape,0.5) + 0.01*xp.random.rand(*signal.shape)
+        # signal_deconv = signal.copy()
+    else:
+        signal_deconv = signal_deconv #+ 0.1*prior.max()*xp.random.rand(*signal.shape)
+            
+    signal_deconv = signal_deconv/signal_deconv.sum()
+        
+    # to measure the distance between the guess convolved and the signal
+    error = None    
+    if measure == True:
+        error = xp.zeros(iterations)
+
+    for i in range(iterations):
+
+        # I use this property to make computation faster
+        kernel_update = my_convcorr_sqfft(signal_deconv, kernel)
+        kernel_mirror = axisflip(kernel_update)
+
+        relative_blur = my_convolution(signal_deconv, kernel_update)
+        if measure==True:
+            # mean spectrum normalization
+            #error[i] = xp.linalg.norm(signal/signal.sum()-relative_blur/relative_blur.sum())
+            error[i] = snrIntensity_db(signal/signal.sum(), xp.abs(signal/signal.sum()-relative_blur/relative_blur.sum()))
+
+        if verbose==True and (i % 100)==0 and measure==False:
+            print('Iteration ' + str(i))
+        elif verbose==True and (i % 100)==0 and measure==True:
+            print('Iteration ' + str(i) + ' - noise level: ' + str(error[i]))
+
+        relative_blur = signal / relative_blur
+
+        # avoid errors due to division by zero or inf
+        relative_blur[xp.isinf(relative_blur)] = epsilon
+        relative_blur = xp.nan_to_num(relative_blur)
+
+        # multiplicative update 
+        # signal_deconv *= 0.5 * (my_convolution(relative_blur, kernel_mirror) + my_correlation(axisflip(relative_blur), kernel_mirror))
+        signal_deconv *= my_convolution(relative_blur, kernel_mirror)
+        # signal_deconv *= my_correlation(axisflip(relative_blur), kernel_mirror)
                 
     if clip:
         signal_deconv[signal_deconv > +1] = +1
@@ -458,7 +527,7 @@ def anchorUpdate_H(signal, kernel, signal_deconv=np.float32(0), iterations=10, m
     return signal_deconv, error
 
 
-
+# De-AutoCorrelation protocol implemented by Schultz-Snyder
 def schulzSnyder(correlation, kernel, prior=np.float32(0), iterations=10, measure=True, clip=True, verbose=True):
     xp = cp.get_array_module(correlation)
     epsilon = 1e-7

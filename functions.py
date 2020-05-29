@@ -152,16 +152,6 @@ def my_correlation_withfft(function1, function2):
     return (xp.fft.fftshift(xp.fft.irfftn(temp)))
 
 
-
-# def my_convolution2(function1, function2):
-#     xp = cp.get_array_module(function1)
-#     temp1 = xp.fft.rfftn(function1)
-#     temp = temp1 * xp.fft.rfftn(function2)
-#     del temp1
-#     temp = xp.fft.irfftn(temp)
-#     temp = xp.fft.fftshift(temp)
-#     return temp
-
 def my_correlationCentered(function1, function2):
     xp = cp.get_array_module(function1)
 
@@ -328,6 +318,15 @@ def weighted_average(x, axis=0, mode='poisson'):
         
     return mean
 
+
+# %% signal-to-noise ratio definition
+    
+def snrIntensity_db(signal, noise, kind='mean'):
+    xp = cp.get_array_module(signal)
+    if kind=='mean':
+        return 20*xp.log10(xp.mean(signal) / xp.mean(noise))
+    if kind=='peak':
+        return 20*xp.log10(xp.max(signal) / xp.mean(noise))
 
 
 
