@@ -424,27 +424,51 @@ def ER_inplaceFFT(fftmagnitude, g_k, mask, steps):
 
 
 # %% MAIN ALGORITHM - every functions above is called within this
-
-""" 
-algorithm options:
-    fftmagnitude: modulus of the recorded Fourier transform
-    rec_prior: starting guess for the object
-    phase_prior: starting guess for the Foruier phase
-    
-    masked: 'full', 'half', 'circular', 'spherical'
-    method: 'ER', 'II', 'OO', 'HIO', 'OSS', 'ER_pedantic', 'ER_inplaceFFT', 'HIO_mode', 'HIO_shrinkwrap'
-    mode: 'classical', 'normal', 'shrink-wrap', 'sparsity'
-    
-    beta: feedback parameter
-    steps: number of phase retrieval steps
-
-"""
-
 def phaseRet(fftmagnitude, 
              rec_prior=None, phase_prior=None, attempts=10,
              masked='full', method='ER', mode='normal',
              measure = False,
              beta=0.9, steps=200, parameters=[100, 30, 1.5, 0.9]):
+    """
+    This is the implementation of the Phase Retrieval algorithm. It relies on 
+    the functions above in order to accomplish the task of recovery the phase 
+    connected with a given modulus.
+
+    Parameters
+    ----------
+    fftmagnitude : TYPE
+        modulus of the recorded Fourier transform.
+    rec_prior : TYPE, optional
+        starting guess for the object. The default is None.
+    phase_prior : TYPE, optional
+        starting guess for the Foruier phase. The default is None.
+    attempts : TYPE, optional
+        DESCRIPTION. The default is 10.
+    masked : TYPE, optional
+        'full', 'half', 'circular', 'spherical'. The default is 'full'.
+    method : TYPE, optional
+        'ER', 'II', 'OO', 'HIO', 'OSS', 'ER_pedantic', 'ER_inplaceFFT', 'HIO_mode', 'HIO_shrinkwrap'. The default is 'ER'.
+    mode : TYPE, optional
+        'classical', 'normal', 'shrink-wrap', 'sparsity'. The default is 'normal'.
+    measure : TYPE, optional
+        DESCRIPTION. The default is False.
+    beta : TYPE, optional
+        feedback parameter as defined in HIO. The default is 0.9.
+    steps : TYPE, optional
+        number of phase retrieval steps. The default is 200.
+    parameters : TYPE, optional
+        DESCRIPTION. The default is [100, 30, 1.5, 0.9].
+
+    Returns
+    -------
+    g_k : TYPE
+        phase retrieved reconstruction.
+    mask : TYPE
+        final output binary mask.
+    error : TYPE
+        error during iteration.
+
+    """
 
     # start computing time from the first call 
     t = time.time()    
