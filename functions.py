@@ -114,14 +114,23 @@ def my_centerND(function):
     return function
 
 
-# %% convolution correlation routines
+# %% Fourier - convolution correlation routines
+"""
+Please consider to implement proper fftshift sequences for appropriate phase 
+mapping. It shouldn't affect the result, since within these function no direct
+operation on the phase is done. But it may worth a try.
+
+"""
+
 def my_convolution(function1, function2):
     xp = cp.get_array_module(function1)
     return xp.fft.fftshift((xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2))))
 
+
 def my_correlation(function1, function2):
     xp = cp.get_array_module(function1)
     return xp.fft.fftshift((xp.fft.irfftn(xp.conj(xp.fft.rfftn(function1)) * xp.fft.rfftn(function2))))
+
 
 def my_convcorr(function1, function2):
     xp = cp.get_array_module(function1)
@@ -170,9 +179,11 @@ def my_correlationCentered(function1, function2):
 def my_autocorrelation(x):
     return my_correlation(x, x)
 
+
 def autocorrelation2fouriermod(x):
     xp = cp.get_array_module(x)
     return xp.sqrt(xp.abs(xp.fft.rfftn(x)))
+
 
 def fouriermod2autocorrelation(x):
     xp = cp.get_array_module(x)
@@ -196,6 +207,7 @@ def my_gaussblur(function, sigma):
         function = xp.fft.ifft(xp.fft.fft(function, axis=i) * temp, axis=i)
     return xp.fft.fftshift(xp.real(function))    
 
+
 # this is useful for OSS, alpha has opposite role than sigma
 def my_gaussBlurInv(function, alpha):
     xp = cp.get_array_module(function)
@@ -212,6 +224,7 @@ def my_gaussBlurInv(function, alpha):
         temp = gaussian_1d.reshape(reshape) 
         function = xp.fft.ifft(xp.fft.fft(function, axis=i) * temp, axis=i)
     return xp.fft.fftshift(xp.real(function))    
+
 
 def gaussian_psf(size=[200,200], alpha=[10,20]):
     x = np.arange(0, size[0], dtype=np.float32)
@@ -248,6 +261,7 @@ def circular_mask2D(h, w, center=None, radius=None):
     mask = (dist_from_center <= radius)
     return mask
 
+
 def spherical_mask3D(h, w, d, center=None, radius=None):
     if center is None: # use the middle of the image
         center = (int(w/2), int(h/2), int(d/2))
@@ -260,6 +274,7 @@ def spherical_mask3D(h, w, d, center=None, radius=None):
     mask = (dist_from_center <= radius)
     return mask
 
+
 def threshold_maskND(function, fraction=0):
     # default value is positive thresholding
     xp = cp.get_array_module(function)
@@ -268,12 +283,14 @@ def threshold_maskND(function, fraction=0):
 
     return mask
 
+
 def autocorrelation_maskND(function, fraction=0):
     # default value is positive thresholding
     function = my_autocorrelation(function)
     mask = threshold_maskND(function, fraction)
     
     return mask
+
 
 def sparsity_maskND(function, fraction=0):
     # default value is positive thresholding
@@ -303,8 +320,7 @@ def anular_mask2D(h, w, radius=[100,96]):
     return mask
 
 
-# %% average
-
+# %% averages
 def weighted_average(x, axis=0, mode='poisson'):
     xp = cp.get_array_module(x)
 
@@ -320,7 +336,6 @@ def weighted_average(x, axis=0, mode='poisson'):
 
 
 # %% signal-to-noise ratio definition
-    
 def snrIntensity_db(signal, noise, kind='mean'):
     xp = cp.get_array_module(signal)
     if kind=='mean':
