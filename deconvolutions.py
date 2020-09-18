@@ -367,7 +367,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
         Last implementation returns the SNR instead of euclidean distance.
 
     """
-
+    
     # for code agnosticity between Numpy/Cupy
     xp = cp.get_array_module(signal)
     
@@ -392,7 +392,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
 
     # starting guess with a flat image
     if signal_deconv.any()==0:
-        xp.random.seed(0)
+        # xp.random.seed(0)
         signal_deconv = xp.full(signal.shape,0.5) + 0.01*xp.random.rand(*signal.shape)
         # signal_deconv = signal.copy()
     else:
@@ -407,11 +407,9 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
         error = xp.zeros(iterations)
 
     for i in range(iterations):
-
         # I use this property to make computation faster
         kernel_update = my_convcorr_sqfft(signal_deconv, kernel)
         kernel_mirror = axisflip(kernel_update)
-
         
         relative_blur = my_convolution(signal_deconv, kernel_update)
         
@@ -419,6 +417,8 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
         if measure==True:
             #error[i] = xp.linalg.norm(signal/signal.sum()-relative_blur/relative_blur.sum())
             error[i] = snrIntensity_db(signal/signal.sum(), xp.abs(signal/signal.sum()-relative_blur/relative_blur.sum()))
+            if (error[i] < error[i-100]) and i > 100:
+                break
 
         if verbose==True and (i % 100)==0 and measure==False:
             print('Iteration ' + str(i))
@@ -447,7 +447,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
     print("\n\n Algorithm finished. Performance:")
     print("--- %s seconds ----" % (time.time() - start_time))
     print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
-    return signal_deconv, error
+    return signal_deconv, error #,kernel_update
 
 
 def schulzSnyder(correlation, kernel, prior=np.float32(0), iterations=10, measure=True, clip=True, verbose=True):
@@ -614,3 +614,10 @@ def invert_autoconvolution(magnitude, prior=None, mask=None, measure=True,
     
     return (x_hat, ratio)
     
+
+
+
+
+
+
+

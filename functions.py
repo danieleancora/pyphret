@@ -14,6 +14,7 @@ import time
 import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import ndimage
 
 
 # %% alignment routines
@@ -76,7 +77,27 @@ def my_findshiftND(function1, function2):
 
 # NOW WORKING AS 03/25/2020! Check one pixel shift, algorithm wrapper
 def my_alignND(function1, function2, mode='normal'):
+    """
+    Shift the function2 keeping function1 as a reference based on 
+    cross-correlation between the two
 
+    Parameters
+    ----------
+    function1 : ndimage
+        reference ndimage for the shift.
+    function2 : TYPE
+        ndimage to be shifted.
+    mode : string, optional
+        'normal' performs full cross-correlation registration, 'fast' project 
+        functions1 and function2 along each axis and performs cross-correlation
+        check on them. 'flip' check if the image needs to be flipped to achieve
+        higher correlation. The default is 'normal'.
+
+    Returns
+    -------
+    None.
+
+    """
     if mode=='fast':
         shift = my_findshiftND_fast(function1, function2)
         
@@ -95,6 +116,21 @@ def my_alignND(function1, function2, mode='normal'):
         function2 = np.roll(function2, shift[i], axis=i)
     
     return function2
+
+
+def my_centerOfMassND(function):
+    cm = np.asarray(ndimage.center_of_mass(function))
+    c1 = np.asarray(tuple(int(x/2) for x in function.shape))
+    
+    print(c1)
+    shift = np.rint(c1-cm)
+    
+    print('The shift between images is ' + str(shift))
+
+    for i in range(0, len(shift)):
+        function = np.roll(function, int(shift[i]), axis=i)
+    return function
+
 
 
 def my_centerND(function):
@@ -124,12 +160,12 @@ operation on the phase is done. But it may worth a try.
 
 def my_convolution(function1, function2):
     xp = cp.get_array_module(function1)
-    return xp.fft.fftshift((xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2))))
+    return xp.fft.fftshift(xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2), s=function1.shape))
 
 
 def my_correlation(function1, function2):
     xp = cp.get_array_module(function1)
-    return xp.fft.fftshift((xp.fft.irfftn(xp.conj(xp.fft.rfftn(function1)) * xp.fft.rfftn(function2))))
+    return xp.fft.fftshift(xp.fft.irfftn(xp.conj(xp.fft.rfftn(function1)) * xp.fft.rfftn(function2), s=function1.shape))
 
 
 def my_convcorr(function1, function2):
@@ -146,19 +182,19 @@ def my_convcorr(function1, function2):
     # temp = xp.conj(xp.fft.rfftn(function1)) * temp
     
     # return xp.fft.fftshift((xp.fft.irfftn(temp)))
-    return ((xp.fft.irfftn(temp)))
+    return xp.fft.irfftn(temp, s=function1.shape)
 
 
 def my_convcorr_sqfft(function1, function2):
     xp = cp.get_array_module(function1)
     temp = xp.conj(xp.fft.rfftn(function1)) * function2
-    return ((xp.fft.irfftn(temp)))
+    return xp.fft.irfftn(temp, s=function1.shape)
 
 
 def my_correlation_withfft(function1, function2):
     xp = cp.get_array_module(function1)
     temp = xp.conj(xp.fft.rfftn(function1)) * function2
-    return (xp.fft.fftshift(xp.fft.irfftn(temp)))
+    return xp.fft.fftshift(xp.fft.irfftn(temp, s=function1.shape))
 
 
 def my_correlationCentered(function1, function2):
@@ -167,7 +203,7 @@ def my_correlationCentered(function1, function2):
     temp = xp.conj(xp.fft.rfftn(function1))
     temp = temp * xp.fft.rfftn(function2)
        
-    temp = xp.fft.irfftn(temp)
+    temp = xp.fft.irfftn(temp, s=function1.shape)
     temp = xp.fft.fftshift(temp)
     
     # trying to remove residual shifts
@@ -176,15 +212,16 @@ def my_correlationCentered(function1, function2):
     
     return temp
 
+
 def my_autocorrelation(x):
     return my_correlation(x, x)
 
-
+# WARNING: this function may not work with odd array size
 def autocorrelation2fouriermod(x):
     xp = cp.get_array_module(x)
     return xp.sqrt(xp.abs(xp.fft.rfftn(x)))
 
-
+# WARNING: this function does not work with odd array size
 def fouriermod2autocorrelation(x):
     xp = cp.get_array_module(x)
     return xp.fft.fftshift(xp.fft.irfftn(x**2))
