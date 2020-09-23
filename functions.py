@@ -15,6 +15,7 @@ import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage
+import pyphret.backend as pyb
 
 
 # %% alignment routines
@@ -159,17 +160,17 @@ operation on the phase is done. But it may worth a try.
 """
 
 def my_convolution(function1, function2):
-    xp = cp.get_array_module(function1)
+    xp = pyb.get_array_module(function1)
     return xp.fft.fftshift(xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2), s=function1.shape))
 
 
 def my_correlation(function1, function2):
-    xp = cp.get_array_module(function1)
+    xp = pyb.get_array_module(function1)
     return xp.fft.fftshift(xp.fft.irfftn(xp.conj(xp.fft.rfftn(function1)) * xp.fft.rfftn(function2), s=function1.shape))
 
 
 def my_convcorr(function1, function2):
-    xp = cp.get_array_module(function1)
+    xp = pyb.get_array_module(function1)
     
     temp = xp.fft.rfftn(function2)
     temp = xp.conj((xp.fft.rfftn(function1)) * temp) * temp
@@ -186,19 +187,19 @@ def my_convcorr(function1, function2):
 
 
 def my_convcorr_sqfft(function1, function2):
-    xp = cp.get_array_module(function1)
+    xp = pyb.get_array_module(function1)
     temp = xp.conj(xp.fft.rfftn(function1)) * function2
     return xp.fft.irfftn(temp, s=function1.shape)
 
 
 def my_correlation_withfft(function1, function2):
-    xp = cp.get_array_module(function1)
+    xp = pyb.get_array_module(function1)
     temp = xp.conj(xp.fft.rfftn(function1)) * function2
     return xp.fft.fftshift(xp.fft.irfftn(temp, s=function1.shape))
 
 
 def my_correlationCentered(function1, function2):
-    xp = cp.get_array_module(function1)
+    xp = pyb.get_array_module(function1)
 
     temp = xp.conj(xp.fft.rfftn(function1))
     temp = temp * xp.fft.rfftn(function2)
@@ -218,18 +219,18 @@ def my_autocorrelation(x):
 
 # WARNING: this function may not work with odd array size
 def autocorrelation2fouriermod(x):
-    xp = cp.get_array_module(x)
+    xp = pyb.get_array_module(x)
     return xp.sqrt(xp.abs(xp.fft.rfftn(x)))
 
 # WARNING: this function does not work with odd array size
 def fouriermod2autocorrelation(x):
-    xp = cp.get_array_module(x)
+    xp = pyb.get_array_module(x)
     return xp.fft.fftshift(xp.fft.irfftn(x**2))
 
 
 # %% Blurring functions 
 def my_gaussblur(function, sigma):
-    xp = cp.get_array_module(function)
+    xp = pyb.get_array_module(function)
     direction = function.ndim
     normalization = (sigma*xp.sqrt(2*xp.pi))    # energy is preserved
     # loop through all dimension, the problem can be split fourier transformations
@@ -247,7 +248,7 @@ def my_gaussblur(function, sigma):
 
 # this is useful for OSS, alpha has opposite role than sigma
 def my_gaussBlurInv(function, alpha):
-    xp = cp.get_array_module(function)
+    xp = pyb.get_array_module(function)
     direction = function.ndim
     normalization = 1.     # energy is preserved
     # loop through all dimension, the problem can be split fourier transformations
@@ -314,7 +315,7 @@ def spherical_mask3D(h, w, d, center=None, radius=None):
 
 def threshold_maskND(function, fraction=0):
     # default value is positive thresholding
-    xp = cp.get_array_module(function)
+    xp = pyb.get_array_module(function)
     value = xp.max(function) * fraction
     mask = (function > value)
 
@@ -331,7 +332,7 @@ def autocorrelation_maskND(function, fraction=0):
 
 def sparsity_maskND(function, fraction=0):
     # default value is positive thresholding
-    xp = cp.get_array_module(function)
+    xp = pyb.get_array_module(function)
     k = int(np.size(function) * fraction) 
     print(k)
     linear = xp.reshape(function, -1)     
@@ -359,7 +360,7 @@ def anular_mask2D(h, w, radius=[100,96]):
 
 # %% averages
 def weighted_average(x, axis=0, mode='poisson'):
-    xp = cp.get_array_module(x)
+    xp = pyb.get_array_module(x)
 
     if mode=='poisson':
         w = xp.abs(x)
@@ -374,7 +375,7 @@ def weighted_average(x, axis=0, mode='poisson'):
 
 # %% signal-to-noise ratio definition
 def snrIntensity_db(signal, noise, kind='mean'):
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     if kind=='mean':
         return 20*xp.log10(xp.mean(signal) / xp.mean(noise))
     if kind=='peak':

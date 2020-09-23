@@ -65,7 +65,6 @@ deconvolved_B, error_B = pd.anchorUpdateX(cp.asarray(measureB_noise_corr), cp.as
 deconvolved_B, error_B = pd.anchorUpdateX((measureB_noise_corr), (psf_round), 
                                           np.zeros_like(psf_long), kerneltype='B', iterations=iterations)
 
-
 deconvolved_B, error_B = deconvolved_B.get(), error_B.get()
 deconvolved_B = pf.my_alignND(satellite, (deconvolved_B)) 
 
