@@ -14,9 +14,9 @@ import pyphret.functions as pf
 import pyphret.deconvolutions as pd
 
 # load the dataset
-satellite = tiff.imread('test_images//satellite.tif')
-psf_long = tiff.imread('test_images//psf_long.tiff')
-psf_round = tiff.imread('test_images//psf_round.tiff')
+satellite = tiff.imread('..//test_images//satellite.tif')
+psf_long = tiff.imread('..//test_images//psf_long.tiff')
+psf_round = tiff.imread('..//test_images//psf_round.tiff')
 
 # psf normalization
 psf_long /= psf_long.sum()
@@ -62,9 +62,6 @@ measureB_noise_corr = pf.my_autocorrelation(measureB_noise - lambd)
 deconvolved_B, error_B = pd.anchorUpdateX(cp.asarray(measureB_noise_corr), cp.asarray(psf_round), 
                                           cp.asarray(0), kerneltype='B', iterations=iterations)
 
-deconvolved_B, error_B = pd.anchorUpdateX((measureB_noise_corr), (psf_round), 
-                                          np.zeros_like(psf_long), kerneltype='B', iterations=iterations)
-
 deconvolved_B, error_B = deconvolved_B.get(), error_B.get()
 deconvolved_B = pf.my_alignND(satellite, (deconvolved_B)) 
 
@@ -74,33 +71,6 @@ plt.subplot(222), plt.imshow(psf_round), plt.title('psf that blurs the OBJECT!')
 plt.subplot(223), plt.imshow(measureB_noise_corr), plt.title('blurred and noisy autocorrelation')
 plt.subplot(224), plt.imshow(deconvolved_B), plt.title('deconvolved deautocorrelated result')
 
-
-
-psf_round = pf.gaussian_psf([175,175], alpha=[2,2])
-
-satellite2 = satellite.copy()
-satellite = satellite[20:-20,20:-20]
-
-noise = np.random.poisson(lam=lambd, size=satellite.shape)
-measureB = pf.my_convolution(satellite, psf_round)
-measureB = (2**16) * measureB/measureB.max()
-measureB_noise = measureB + noise
-measureB_noise_corr = pf.my_autocorrelation(measureB_noise - lambd)
-
-deconvolved_C, error_C = pd.anchorUpdateX(measureB_noise_corr, psf_round, 
-                                          kerneltype='B', iterations=iterations)
-deconvolved_C = pf.my_alignND(satellite, (deconvolved_C)) 
-
-
-plt.plot(error_C)
-
-plt.imshow(measureB_noise_corr)
-
-plt.figure(2)
-plt.subplot(221), plt.imshow(satellite), plt.title('original')
-plt.subplot(222), plt.imshow(psf_round), plt.title('psf that blurs the OBJECT!')
-plt.subplot(223), plt.imshow(measureB_noise_corr), plt.title('blurred and noisy autocorrelation')
-plt.subplot(224), plt.imshow(deconvolved_C), plt.title('deconvolved deautocorrelated result')
 
 
 
