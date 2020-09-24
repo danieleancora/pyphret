@@ -16,8 +16,8 @@ import pyphret.functions as pf
 
 
 def rotateStack(origStack, angleInitial=0, angleStep=90, rotateaxes=(0,1)):
-
     # pop out a warning
+    print('Rotating the stack...')
     print('This functions assumes the axis=0 as the one storing different views')
     
     # create the 
@@ -35,8 +35,8 @@ def rotateStack(origStack, angleInitial=0, angleStep=90, rotateaxes=(0,1)):
 
 
 def alignStack(origStack, reference=0):
-
     # pop out a warning
+    print('Aligning the stack against view ' + str(reference) + '...')
     print('This functions assumes the axis=0 as the one storing different views')
 
     # create the stack
@@ -54,6 +54,8 @@ def alignStack(origStack, reference=0):
     
    
 def autocorrelateStack(origStack):
+    # pop out a warning
+    print('Calculating the stack autocorrelation...')
 
     # create the stack
     spimXcorr = np.zeros_like(origStack)
