@@ -373,6 +373,11 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
     
     # for performance evaluation
     start_time = time.time()
+    
+    if iterations<100: 
+        breakcheck = iterations
+    else:
+        breakcheck = 100
 
     # normalization
     signal /= signal.sum()
@@ -417,7 +422,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
         if measure==True:
             #error[i] = xp.linalg.norm(signal/signal.sum()-relative_blur/relative_blur.sum())
             error[i] = snrIntensity_db(signal/signal.sum(), xp.abs(signal/signal.sum()-relative_blur/relative_blur.sum()))
-            if (error[i] < error[i-100]) and i > 100:
+            if (error[i] < error[i-breakcheck]) and i > breakcheck:
                 break
 
         if verbose==True and (i % 100)==0 and measure==False:
