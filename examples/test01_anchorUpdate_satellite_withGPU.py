@@ -62,6 +62,9 @@ measureB_noise_corr = pf.my_autocorrelation(measureB_noise - lambd)
 deconvolved_B, error_B = pd.anchorUpdateX(cp.asarray(measureB_noise_corr), cp.asarray(psf_round), 
                                           cp.asarray(0), kerneltype='B', iterations=iterations)
 
+deconvolved_B, error_B = pd.schulzSnyder(cp.asarray(measureB_noise_corr), cp.asarray(0), iterations=iterations)
+
+
 deconvolved_B, error_B = deconvolved_B.get(), error_B.get()
 deconvolved_B = pf.my_alignND(satellite, (deconvolved_B)) 
 deconvolved_B = deconvolved_B/deconvolved_B.mean()

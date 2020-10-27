@@ -14,6 +14,9 @@ import cupyx.scipy.ndimage
 import cupy as cp
 import numpy as np
 
+
+import pyphret.cusignal.convolution as pyconv
+
 from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db
 
 
@@ -473,7 +476,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
 
 
 
-def schulzSnyder(correlation, prior=np.float32(0), iterations=10, measure=True, clip=True, verbose=True):
+def schulzSnyder(correlation, prior=np.float32(0), iterations=10, measure=True, clip=False, verbose=True):
     """
     De-AutoCorrelation protocol implemented by Schultz-Snyder. It needs to be 
     checked to assess the working procedure.
@@ -553,9 +556,9 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, measure=True, 
 
         # multiplicative update 
         # signal_decorr *= my_correlation(axisflip(signal_decorr), (relative_corr)) / R_0
-        signal_decorr *= my_correlation((relative_corr), (signal_decorr)) / R_0
+        # signal_decorr *= my_correlation((relative_corr), (signal_decorr)) / R_0
         # signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_correlation(relative_corr, axisflip(signal_decorr))) / R_0
-        # signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_convolution(relative_corr, signal_decorr)) / R_0
+        signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_convolution(relative_corr, signal_decorr)) / R_0
         
     if clip:
         signal_decorr[signal_decorr > +1] = +1
@@ -903,12 +906,11 @@ def anchorUpdateSK(signal, kernel, signal_deconv=np.float32(0), iterations=10, m
 
     for i in range(iterations):
         # I use this property to make computation faster
-        kernel_update = xps.ndimage.gaussian_filter(signal_deconv, sigma)
-        # kernel_update = xps.ndimage.fourier_gaussian(signal_deconv, sigma)
+        kernel_update = pyconv.correlate(signal_deconv, kernel, mode='same')
         
-        kernel_mirror = (kernel_update)
+        kernel_mirror = axisflip(kernel_update)
         
-        relative_blur = my_correlation(signal_deconv, kernel_update)
+        relative_blur = pyconv.correlate(signal_deconv, kernel_update, mode='same')
         
         # compute the measured distance metric if given
         if measure==True:
@@ -924,20 +926,20 @@ def anchorUpdateSK(signal, kernel, signal_deconv=np.float32(0), iterations=10, m
 
         relative_blur = signal / relative_blur
 
-        # avoid errors due to division by zero or inf
-        relative_blur[xp.isinf(relative_blur)] = epsilon
-        relative_blur = xp.nan_to_num(relative_blur)
+        # # avoid errors due to division by zero or inf
+        # relative_blur[xp.isinf(relative_blur)] = epsilon
+        # relative_blur = xp.nan_to_num(relative_blur)
 
         # multiplicative update, for the full model
-        signal_deconv *= 0.5 * (my_convolution(relative_blur, kernel_mirror) + my_correlation(axisflip(relative_blur), kernel_mirror))
+        signal_deconv *= 0.5 * (pyconv.convolve(relative_blur, kernel_mirror, mode='same') + pyconv.correlate((relative_blur), kernel_mirror, mode='same'))
         # signal_deconv *= (my_convolution(relative_blur, kernel_mirror) + my_correlation(relative_blur,kernel_mirror))
 
 
         # multiplicative update, for the Anchor Update approximation
-        # signal_deconv *= my_convolution(kernel_mirror, relative_blur)
+        # signal_deconv *= pyconv.correlate(relative_blur, kernel_mirror, mode='same')
 
         # multiplicative update, remaining term. This gives wrong reconstructions
-        # signal_deconv *= my_correlation(axisflip(relative_blur), kernel_mirror)
+        # signal_deconv *= pyconv.correlate((relative_blur), kernel_mirror, mode='same')
                 
     if clip:
         signal_deconv[signal_deconv > +1] = +1
@@ -949,4 +951,103 @@ def anchorUpdateSK(signal, kernel, signal_deconv=np.float32(0), iterations=10, m
     return signal_deconv, error #,kernel_update
 
 
+def schulzSnyderSK(correlation, prior=np.float32(0), iterations=10, measure=True, clip=False, verbose=True):
+    """
+    De-AutoCorrelation protocol implemented by Schultz-Snyder. It needs to be 
+    checked to assess the working procedure.
+
+    Parameters
+    ----------
+    correlation : TYPE
+        DESCRIPTION.
+    prior : TYPE, optional
+        DESCRIPTION. The default is np.float32(0).
+    iterations : TYPE, optional
+        DESCRIPTION. The default is 10.
+    measure : TYPE, optional
+        DESCRIPTION. The default is True.
+    clip : TYPE, optional
+        DESCRIPTION. The default is True.
+    verbose : TYPE, optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    signal_decorr : TYPE
+        DESCRIPTION.
+    error : TYPE
+        DESCRIPTION.
+
+    """
+    
+    xp = cp.get_array_module(correlation)
+
+
+    # for performance evaluation
+    start_time = time.time()
+
+    epsilon = 1e-7
+
+    if iterations<100: 
+        breakcheck = iterations
+    else:
+        breakcheck = 100
+        
+    # starting guess with a flat image
+    if prior.any()==0:
+        signal_decorr = xp.full(correlation.shape,0.5) + 0.01*xp.random.rand(*correlation.shape)
+    else:
+        signal_decorr = prior.copy() #+ 0.1*prior.max()*xp.random.rand(*signal.shape)
+        
+    R_0 = signal_decorr.sum()
+    signal_decorr = signal_decorr / R_0
+    relative_corr = xp.zeros_like(signal_decorr)
+
+    # to measure the distance between the guess convolved and the signal
+    error = None    
+    if measure == True:
+        error = xp.zeros(iterations)
+
+    for i in range(iterations):
+        relative_corr = pyconv.correlate(signal_decorr, signal_decorr, mode='same', method='fft')
+        
+        if measure==True:
+            # error[i] = xp.linalg.norm(correlation/correlation.sum()-relative_corr/relative_corr.sum())
+            error[i] = snrIntensity_db(correlation/correlation.sum(), xp.abs(correlation/correlation.sum()-relative_corr/relative_corr.sum()))
+            if (error[i] < error[i-breakcheck]) and i > breakcheck:
+                break
+
+        if verbose==True and (i % 100)==0 and measure==False:
+            print('Iteration ' + str(i))
+        elif verbose==True and (i % 100)==0 and measure==True:
+            print('Iteration ' + str(i) + ' - noise level: ' + str(error[i]))
+
+        # relative_corr = 0.5*(correlation + axisflip(correlation)) / relative_corr
+        relative_corr = (correlation) / relative_corr
+
+        # avoid errors due to division by zero or inf
+        relative_corr[xp.isinf(relative_corr)] = epsilon 
+        relative_corr = xp.nan_to_num(relative_corr)
+
+        # multiplicative update 
+        # signal_decorr *= my_correlation(axisflip(signal_decorr), (relative_corr)) / R_0
+        signal_decorr *= my_correlation((relative_corr), (signal_decorr)) / R_0
+        # signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_correlation(relative_corr, axisflip(signal_decorr))) / R_0
+        # signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_convolution(relative_corr, signal_decorr)) / R_0
+        
+    if clip:
+        signal_decorr[signal_decorr > +1] = +1
+        signal_decorr[signal_decorr < -1] = -1
+
+    print("\n\n Algorithm finished. Performance:")
+    print("--- %s seconds ----" % (time.time() - start_time))
+    print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
+
+    return signal_decorr, error
+
+
+
 # changes to test online branching!!!
+
+
+
