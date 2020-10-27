@@ -25,10 +25,13 @@ def rotateStack(origStack, angleInitial=0, angleStep=90, rotateaxes=(0,1)):
     
     # perform the rotation
     for i in range(origStack.shape[0]):
-        if angleStep != 90:
+        if angleStep == 0:
+            rotatedStack[i,:,:,:] = origStack[i,:,:,:]
+        elif angleStep != 90:
             rotatedStack[i,:,:,:] = ndimage.rotate(origStack[i,:,:,:],   -angleStep*i, axes=rotateaxes, reshape=False)    
         else:
             rotatedStack[i,:,:,:] = np.rot90(origStack[i,:,:,:], -i, axes=rotateaxes)
+        
         print('Rotating view ' + str(i) + ' - deg = ' + str(-angleStep*i))
 
     return rotatedStack

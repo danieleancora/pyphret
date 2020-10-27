@@ -18,6 +18,8 @@ satellite = tiff.imread('..//test_images//satellite.tif')
 psf_long = tiff.imread('..//test_images//psf_long.tiff')
 psf_round = tiff.imread('..//test_images//psf_round.tiff')
 
+satellite = satellite / satellite.mean()
+
 # psf normalization
 psf_long /= psf_long.sum()
 psf_round /= psf_round.sum()
@@ -38,17 +40,15 @@ measureA_blur_noise = measureA_blur + noise - lambd
 deconvolved_A, error_A = pd.anchorUpdateX(cp.asarray(measureA_blur_noise), cp.asarray(psf_long), 
                                           cp.asarray(0), kerneltype='A', iterations=iterations)
 
-# deconvolved_A, error_A = pd.anchorUpdateX((measureA_blur_noise), (psf_long), 
-#                                           np.zeros_like(psf_long), kerneltype='A', iterations=iterations)
-
 deconvolved_A, error_A = deconvolved_A.get(), error_A.get()
 deconvolved_A = pf.my_alignND(satellite, (deconvolved_A)) 
+deconvolved_A = deconvolved_A /deconvolved_A.mean()
 
 plt.figure(1)
-plt.subplot(221), plt.imshow(satellite), plt.title('original')
+plt.subplot(221), plt.imshow(satellite, vmax=satellite.max()), plt.title('original')
 plt.subplot(222), plt.imshow(psf_long), plt.title('psf that blurs the AUTOCORRELATION')
 plt.subplot(223), plt.imshow(measureA_blur_noise), plt.title('blurred and noisy autocorrelation')
-plt.subplot(224), plt.imshow(deconvolved_A), plt.title('deconvolved deautocorrelated result')
+plt.subplot(224), plt.imshow(deconvolved_A, vmax=satellite.max()), plt.title('deconvolved deautocorrelated result')
 
 
 # %% creating the measurement described in the experiment B - if results do not converse, re-run several times until snr grows
@@ -64,12 +64,13 @@ deconvolved_B, error_B = pd.anchorUpdateX(cp.asarray(measureB_noise_corr), cp.as
 
 deconvolved_B, error_B = deconvolved_B.get(), error_B.get()
 deconvolved_B = pf.my_alignND(satellite, (deconvolved_B)) 
+deconvolved_B = deconvolved_B/deconvolved_B.mean()
 
 plt.figure(2)
-plt.subplot(221), plt.imshow(satellite), plt.title('original')
+plt.subplot(221), plt.imshow(satellite, vmax=satellite.max()), plt.title('original')
 plt.subplot(222), plt.imshow(psf_round), plt.title('psf that blurs the OBJECT!')
 plt.subplot(223), plt.imshow(measureB_noise_corr), plt.title('blurred and noisy autocorrelation')
-plt.subplot(224), plt.imshow(deconvolved_B), plt.title('deconvolved deautocorrelated result')
+plt.subplot(224), plt.imshow(deconvolved_B, vmax=satellite.max()), plt.title('deconvolved deautocorrelated result')
 
 
 

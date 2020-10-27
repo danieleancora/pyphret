@@ -11,7 +11,8 @@ import numpy as np
 import scipy.signal
 import matplotlib.pyplot as plt
 from skimage.util import view_as_windows
-import package_hiphret.PR_development_V4_forReal as pr
+# import package_hiphret.PR_development_V4_forReal as pr
+import pyphret.retrievals as pr
 
 
 def speckle_autocorrelation(pattern, sigma = None, mask = None, threshold = None,

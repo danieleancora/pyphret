@@ -10,6 +10,7 @@ import cupy as cp
 import numpy as np
 import pyphret.functions as pf
 import matplotlib.pyplot as plt
+from pyphret.functions import snrIntensity_db
 
 
 # %% GENERAL UTILITIES
@@ -302,7 +303,10 @@ def HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode, measure=False, paramete
         if measure == True:
             gp_k = xp.fft.rfftn(g_k)                     # alias for G_k
             gp_k = xp.abs(gp_k)                        # alias for Phi_k
-            error[k] = xp.linalg.norm(fftmagnitude - gp_k) * normalization
+            # error[k] = xp.linalg.norm(fftmagnitude - gp_k) * normalization
+
+            error[k] = snrIntensity_db(fftmagnitude/fftmagnitude.sum(), xp.abs(fftmagnitude/fftmagnitude.sum()-gp_k/gp_k.sum()))
+
 
     if mode == 'exponential-average':
         g_k = g_exp
@@ -428,7 +432,7 @@ def phaseRet(fftmagnitude,
              rec_prior=None, phase_prior=None, attempts=10,
              masked='full', method='ER', mode='normal',
              measure = False,
-             beta=0.9, steps=200, parameters=[100, 30, 1.5, 0.9]):
+             beta=0.9, steps=200, parameters=[100, 30, 1.5, 0.9, 1]):
     """
     This is the implementation of the Phase Retrieval algorithm. It relies on 
     the functions above in order to accomplish the task of recovery the phase 

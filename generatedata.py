@@ -145,15 +145,16 @@ def randomAmorphousVases_3Dspeckled(intdimension=512, extdimension=1024, volumer
     # smooth and sharpen before returning
     sample_vase = pf.axisflip(hyp**2) * pf.my_gaussblur(sample_vase**2, 0.5)   
     sample_vase = np.abs(sample_vase) 
-    
+
+    # randomize amplitude
     randomrods = np.abs(np.fft.fftn( ampli * np.exp(phase * mask2)) )
     randomrods = randomrods[:intdimension,:intdimension,:intdimension]
-
+    randomrods -= randomrods.min() 
     sample_vase = sample_vase * randomrods
+    sample_vase -= sample_vase.min() 
     
+    # normalize intensity
     sample_vase /= sample_vase.max()
-    
-    
 
     return sample_vase
 
