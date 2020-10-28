@@ -161,12 +161,13 @@ operation on the phase is done. But it may worth a try.
 
 def my_convolution(function1, function2):
     xp = pyb.get_array_module(function1)
-    return xp.fft.fftshift(xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2), s=function1.shape))
+    # return xp.fft.fftshift(xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2), s=function1.shape))
+    return xp.fft.ifftshift(xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2), s=function1.shape))
 
 
 def my_correlation(function1, function2):
     xp = pyb.get_array_module(function1)
-    return xp.fft.fftshift(xp.fft.irfftn(xp.conj(xp.fft.rfftn(function1)) * xp.fft.rfftn(function2), s=function1.shape))
+    return xp.fft.ifftshift(xp.fft.irfftn(xp.conj(xp.fft.rfftn(function1)) * xp.fft.rfftn(function2), s=function1.shape))
 
 
 def my_convcorr(function1, function2):

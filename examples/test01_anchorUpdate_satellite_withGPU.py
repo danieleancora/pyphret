@@ -34,7 +34,7 @@ noise = (np.random.poisson(lam=lambd, size=satellite.shape))
 measureA = pf.my_autocorrelation(satellite)
 measureA = (2**16) * measureA/measureA.max()
 measureA_blur = pf.my_convolution(measureA, psf_long)
-measureA_blur_noise = measureA_blur + noise - lambd
+measureA_blur_noise = np.abs(measureA_blur + noise - lambd)
 
 # running the algorithm
 deconvolved_A, error_A = pd.anchorUpdateX(cp.asarray(measureA_blur_noise), cp.asarray(psf_long), 
@@ -56,16 +56,18 @@ noise = np.random.poisson(lam=lambd, size=satellite.shape)
 measureB = pf.my_convolution(satellite, psf_round)
 measureB = (2**16) * measureB/measureB.max()
 measureB_noise = measureB + noise
-measureB_noise_corr = pf.my_autocorrelation(measureB_noise - lambd)
+measureB_noise_corr = np.abs(pf.my_autocorrelation(measureB_noise - lambd))
     
 # running the algorithm
 deconvolved_B, error_B = pd.anchorUpdateX(cp.asarray(measureB_noise_corr), cp.asarray(psf_round), 
                                           cp.asarray(0), kerneltype='B', iterations=iterations)
 
-deconvolved_B, error_B = pd.schulzSnyder(cp.asarray(measureB_noise_corr), cp.asarray(0), iterations=iterations)
+deconvolved_B, error_B = pd.schulzSnyderSK(np.asarray(measureB_noise_corr), np.asarray(0), iterations=iterations)
+
+deconvolved_B, error_B = pd.richardsonLucySK(np.asarray(measureB), np.asarray(psf_round), np.asarray(0), iterations=10)
 
 
-deconvolved_B, error_B = deconvolved_B.get(), error_B.get()
+# deconvolved_B, error_B = deconvolved_B.get(), error_B.get()
 deconvolved_B = pf.my_alignND(satellite, (deconvolved_B)) 
 deconvolved_B = deconvolved_B/deconvolved_B.mean()
 
