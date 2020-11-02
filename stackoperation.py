@@ -29,30 +29,36 @@ def rotatecrosStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotate
     # perform the rotation
     for i in range(origStack.shape[0]):
         
-        # if i != reference:
-        xcorr_store = 0
-            
-        for phi in anglelist1:
-            for psi in anglelist2:
-                print('Rotating view ' + str(i) + ' with phi = ' + str(phi) + ' and psi = ' + str(psi))
-                tempVolume = pv.tiltVolume(origStack[i,:,:,:], phi, psi, rotateaxes1, rotateaxes2)
-                xcorr = pf.my_correlation(referenceVolume, tempVolume)
-                # xcorr_max[phi, psi] = xcorr.max()
+        # for performance evaluation
+        start_time = time.time()
+
+        if i != reference:
+            xcorr_store = 0
                 
-                if xcorr.max() > xcorr_store:
-                    xcorr_store = xcorr.max()
-                    phi_store = phi
-                    psi_store = psi
-                    # volume_store = tempVolume.copy()
+            for phi in anglelist1:
+                for psi in anglelist2:
+                    print('Rotating view ' + str(i) + ' with phi = ' + str(phi) + ' and psi = ' + str(psi))
+                    tempVolume = pv.tiltVolume(origStack[i,:,:,:], phi, psi, rotateaxes1, rotateaxes2)
+                    xcorr = pf.my_correlation(referenceVolume, tempVolume)
+                    # xcorr_max[phi, psi] = xcorr.max()
                     
-        print('Best angle found: phi = ' + str(phi_store) + '  psi = ' + str(psi_store))
-        rotatedStack[i,:,:,:] = pv.tiltVolume(origStack[i,:,:,:], phi_store, psi_store, rotateaxes1, rotateaxes2)
-        rotateAngle1[i] = phi_store
-        rotateAngle2[i] = psi_store
-        # else:
-        #     rotatedStack[i,:,:,:] = origStack[i,:,:,:].copy()
-        #     rotateAngle1[i] = 0.
-        #     rotateAngle2[i] = 0.
+                    if xcorr.max() > xcorr_store:
+                        xcorr_store = xcorr.max()
+                        phi_store = phi
+                        psi_store = psi
+                        # volume_store = tempVolume.copy()
+                        
+            print('Best angle found: phi = ' + str(phi_store) + '  psi = ' + str(psi_store))
+            rotatedStack[i,:,:,:] = pv.tiltVolume(origStack[i,:,:,:], phi_store, psi_store, rotateaxes1, rotateaxes2)
+            rotateAngle1[i] = phi_store
+            rotateAngle2[i] = psi_store
+            print("\n\n Angles checked. Performance:")
+            print("--- %s seconds ----" % (time.time() - start_time))
+            
+        else:
+            rotatedStack[i,:,:,:] = origStack[i,:,:,:].copy()
+            rotateAngle1[i] = 0.
+            rotateAngle2[i] = 0.
 
     return rotatedStack, rotateAngle1, rotateAngle2
 
