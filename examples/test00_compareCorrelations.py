@@ -24,6 +24,10 @@ satellite = tiff.imread('..//test_images//satellite.tif')
 psf_long = tiff.imread('..//test_images//psf_long.tiff')
 psf_round = tiff.imread('..//test_images//psf_round.tiff')
 
+# test = np.zeros_like(satellite)
+# test[64:-64,64:-64] = satellite[64:-64,64:-64]
+# satellite = test.copy()
+
 # normalization
 satellite = satellite / satellite.mean()
 psf_long /= psf_long.sum()
@@ -39,8 +43,8 @@ plt.subplot(122), plt.imshow(image2)
 # %% test my convolutions
 autoconv = pf.my_convolution(image1, image2[::-1,::-1])
 autocorr = pf.my_correlation(image1, image2)
-# autoconv /= autoconv.max()
-# autocorr /= autocorr.max()
+autoconv /= autoconv.max()
+autocorr /= autocorr.max()
 
 print(np.array_equal(autoconv,autocorr))
 

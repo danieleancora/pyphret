@@ -13,8 +13,7 @@ import cupyx.scipy.ndimage
 
 import cupy as cp
 import numpy as np
-from scipy import signal as sig_
-
+from scipy import signal 
 
 import pyphret.cusignal.convolution as pyconv
 
@@ -1012,7 +1011,7 @@ def schulzSnyderSK(correlation, prior=np.float32(0), iterations=10, measure=True
         error = xp.zeros(iterations)
 
     for i in range(iterations):
-        relative_corr = signal.correlate(signal_decorr, signal_decorr, mode='same', method='fft')
+        relative_corr = pyconv.correlate(signal_decorr, signal_decorr, mode='same', method='fft')
         
         if measure==True:
             # error[i] = xp.linalg.norm(correlation/correlation.sum()-relative_corr/relative_corr.sum())
@@ -1033,10 +1032,10 @@ def schulzSnyderSK(correlation, prior=np.float32(0), iterations=10, measure=True
         relative_corr = xp.nan_to_num(relative_corr)
 
         # multiplicative update 
-        # signal_decorr *= my_correlation(axisflip(signal_decorr), (relative_corr)) / R_0
-        signal_decorr *= signal.correlate(signal_decorr,relative_corr, mode='same', method='fft') / R_0
+        signal_decorr *= pyconv.convolve(relative_corr, signal_decorr, mode='same', method='fft') / R_0
+        # signal_decorr *= pyconv.correlate(signal_decorr,relative_corr, mode='same', method='fft') / R_0
         # signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_correlation(relative_corr, axisflip(signal_decorr))) / R_0
-        # signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_convolution(relative_corr, signal_decorr)) / R_0
+        # signal_decorr *= (pyconv.correlate(signal_decorr,relative_corr, mode='same', method='fft') + pyconv.convolve(relative_corr, signal_decorr, mode='same', method='fft')) / R_0
         
     if clip:
         signal_decorr[signal_decorr > +1] = +1
