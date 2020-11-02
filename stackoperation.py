@@ -20,7 +20,7 @@ def rotatecrosStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotate
     # create the new stack
     rotatedStack = np.zeros_like(origStack)
     
-    referenceVolume = origStack[reference,:,:,:].copy()  
+    referenceVolume = origStack[reference,:,:,:]
     xcorr_max = np.zeros((anglelist1.shape[0],anglelist2.shape[0]))
     
     rotateAngle1 = np.zeros(origStack.shape[0])
