@@ -958,6 +958,7 @@ def anchorUpdateSK(signal, kernel, signal_deconv=np.float32(0), iterations=10, m
     return signal_deconv, error #,kernel_update
 
 
+<<<<<<< Updated upstream
 def schulzSnyderSK(correlation, prior=np.float32(0), iterations=10, measure=True, clip=False, verbose=True):
     """
     De-AutoCorrelation protocol implemented by Schultz-Snyder. It needs to be 
@@ -1136,6 +1137,11 @@ def richardsonLucySK(signal, kernel, prior=np.float32(0), iterations=10, measure
     print("--- %s seconds ----" % (time.time() - start_time))
     print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
     return signal_deconv, error
+=======
+
+
+# comment for the new branch!!!!
+>>>>>>> Stashed changes
 
 
 
