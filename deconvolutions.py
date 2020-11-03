@@ -11,13 +11,24 @@ import time
 import scipy.ndimage
 import cupyx.scipy.ndimage
 
-import cupy as cp
+# import cupy as cp
 import numpy as np
 from scipy import signal 
+
+from importlib import util
+cupy_enabled = util.find_spec("cupy") is not None
+
+if cupy_enabled:
+    import cupy  as cp
+
 
 import pyphret.cusignal.convolution as pyconv
 
 from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db
+
+
+import pyphret.backend as pyb
+
 
 
 # %% DENOISE ROUTINES
@@ -53,7 +64,7 @@ def _denoise_tv_chambolle_nd(image, weight=0.1, eps=2.e-4, n_iter_max=200):
     Rudin, Osher and Fatemi algorithm.
     """
 
-    xp = cp.get_array_module(image)
+    xp = pyb.get_array_module(image)
     ndim = image.ndim
     p = xp.zeros((image.ndim, ) + image.shape, dtype=image.dtype)
     g = xp.zeros_like(p)
@@ -110,7 +121,7 @@ def _denoise_tv_chambolle_nd(image, weight=0.1, eps=2.e-4, n_iter_max=200):
 # PAY ATTENTION: maybe i cannot implement this procedure using only realfft, 
 # since there might non trivial phase connecting them.
 def wiener_deconvolution(signal, kernel, snr):
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     # clever way to create a tuple of tuple containing the difference between two lists
     difference = tuple((0, x-y) for x,y in zip(signal.shape,kernel.shape))
     kernel = np.pad(kernel, difference, mode='constant' )
@@ -127,7 +138,7 @@ def wiener_deconvolution(signal, kernel, snr):
 # %% DECONVOLUTION ROUTINES - SMALL KERNEL IMPLEMENATIONS
 def richardsonLucy_smallKernel(image, psf, iterations=10, clip=True, verbose=False):
     print('This procedure may be very slow! -> Use it with small psf!!!')
-    xp = cp.get_array_module(image)
+    xp = pyb.get_array_module(image)
     xps = cupyx.scipy.get_array_module(image)
 
     image = image.astype(xp.float)
@@ -152,7 +163,7 @@ def richardsonLucy_smallKernel(image, psf, iterations=10, clip=True, verbose=Fal
 
 def maxAPosteriori_smallKernel(image, psf, iterations=10, clip=True, verbose=False):
     print('This procedure may be very slow! -> Use it with small psf!!!')
-    xp = cp.get_array_module(image)
+    xp = pyb.get_array_module(image)
     xps = cupyx.scipy.get_array_module(image)
 
     image = image.astype(xp.float)
@@ -213,7 +224,7 @@ def richardsonLucy(signal, kernel, prior=np.float32(0), iterations=10, measure=T
         Euclidean distance between signal and the auto-correlation of signal_deconv.
 
     """
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     start_time = time.time()
     
     if iterations<100: 
@@ -298,7 +309,7 @@ def maxAPosteriori(signal, kernel, iterations=10, measure=True, clip=True, verbo
         Euclidean distance between signal and the auto-correlation of signal_deconv.
 
     """
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     start_time = time.time()
     
     epsilon = 1e-7
@@ -384,7 +395,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
     """
     
     # for code agnosticity between Numpy/Cupy
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     
     # for performance evaluation
     start_time = time.time()
@@ -507,7 +518,7 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, measure=True, 
 
     """
     
-    xp = cp.get_array_module(correlation)
+    xp = pyb.get_array_module(correlation)
 
 
     # for performance evaluation
@@ -587,7 +598,7 @@ def invert_autoconvolution(magnitude, prior=None, mask=None, measure=True,
                            steps=200, mode='deautocorrelation', verbose=True):
     
     # agnostic code, xp is either numpy or cupy depending on the magnitude array module
-    xp = cp.get_array_module(magnitude)
+    xp = pyb.get_array_module(magnitude)
 
     # object support constraint
     if mask is None:
@@ -709,7 +720,7 @@ def anchorUpdateZ(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
     """
     
     # for code agnosticity between Numpy/Cupy
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     
     # for performance evaluation
     start_time = time.time()
@@ -792,7 +803,7 @@ def anchorUpdateZ(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
 def anchorUpdateG(signal, sigma=[2,2], signal_deconv=np.float32(0), iterations=10, measure=True, clip=False, verbose=True):
     
     # for code agnosticity between Numpy/Cupy
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     xps = cupyx.scipy.get_array_module(signal)
 
     # for performance evaluation
@@ -872,10 +883,11 @@ def anchorUpdateG(signal, sigma=[2,2], signal_deconv=np.float32(0), iterations=1
 
 
 # %% DE-AUTOCORRELATION AND GAUSSIAN DECONVOLUTION ROUTINES WITH DEBLURRING
+# DO NOT USE THESE FUNCTIONS, THEY ARE UNDER TESTING
 def anchorUpdateSK(signal, kernel, signal_deconv=np.float32(0), iterations=10, measure=True, clip=False, verbose=True):
     
     # for code agnosticity between Numpy/Cupy
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     xps = cupyx.scipy.get_array_module(signal)
 
     # for performance evaluation
@@ -982,7 +994,7 @@ def schulzSnyderSK(correlation, prior=np.float32(0), iterations=10, measure=True
 
     """
     
-    xp = cp.get_array_module(correlation)
+    xp = pyb.get_array_module(correlation)
 
 
     # for performance evaluation
@@ -1080,7 +1092,7 @@ def richardsonLucySK(signal, kernel, prior=np.float32(0), iterations=10, measure
         Euclidean distance between signal and the auto-correlation of signal_deconv.
 
     """
-    xp = cp.get_array_module(signal)
+    xp = pyb.get_array_module(signal)
     start_time = time.time()
     
     if iterations<100: 

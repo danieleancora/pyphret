@@ -11,11 +11,18 @@ for using real FFT protocols.
 
 # LIBRARIES CALL
 import time
-import cupy as cp
+# import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage
 import pyphret.backend as pyb
+
+from importlib import util
+cupy_enabled = util.find_spec("cupy") is not None
+
+if cupy_enabled:
+    import cupy  as cp
+
 
 
 # %% alignment routines

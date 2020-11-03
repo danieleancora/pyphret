@@ -5,7 +5,7 @@ Created on Wed Sep 23 10:48:44 2020
 @author: Daniele Ancora
 """
 
-import cupy  as cp
+# import cupy  as cp
 import numpy as np
 from importlib import util
 import cupyx.scipy
@@ -15,6 +15,9 @@ import scipy
 # taken from sigpy
 # https://github.com/mikgroup/sigpy/blob/master/sigpy/config.py
 cupy_enabled = util.find_spec("cupy") is not None
+
+if cupy_enabled:
+    import cupy  as cp
 
 
 # this function is taken from SIGPY package from the link
