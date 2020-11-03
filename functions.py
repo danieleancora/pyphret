@@ -63,17 +63,31 @@ def my_findshiftND_fast(function1, function2):
 
 # full cross correlation calculation
 def my_findshiftND(function1, function2):
+    xp = pyb.get_array_module(function1)
+
     xcorr = my_correlation(function1, function2)
     maxvalue = xcorr.max()
-    maxposition = np.unravel_index(np.argmax(xcorr), xcorr.shape)
+    maxposition = xp.unravel_index(xp.argmax(xcorr).get(), xcorr.shape)
+    
+    if xp == cp:
+        maxposition = xp.unravel_index(xp.argmax(xcorr).get(), xcorr.shape)
+    else: 
+        maxposition = xp.unravel_index(xp.argmax(xcorr), xcorr.shape)
+
     print('Max position is ' + str(maxposition))
 
     center = tuple(int(x/2) for x in xcorr.shape)
     
     shift = np.asarray(center) - np.asarray(maxposition)
+    
+    # if xp == cp:
+    #     shift = tuple(shift.get())
+    # #     maxvalue = maxvalue.get()
+    # else:
     shift = tuple(shift)
+
     print('The shift between images is ' + str(shift))
-    return (shift, maxvalue)
+    return shift, maxvalue
 
 
 # NOW WORKING AS 03/25/2020! Check one pixel shift, algorithm wrapper
@@ -99,6 +113,9 @@ def my_alignND(function1, function2, mode='normal'):
     None.
 
     """
+    
+    xp = pyb.get_array_module(function1)
+    
     if mode=='fast':
         shift = my_findshiftND_fast(function1, function2)
         
@@ -107,14 +124,14 @@ def my_alignND(function1, function2, mode='normal'):
         (shift_flip, maxvalue_flip) = my_findshiftND(function1, np.flip(function2))
         if maxvalue_flip>maxvalue:
             shift = shift_flip
-            function2 = np.flip(function2)
+            function2 = xp.flip(function2)
             print('We did flip it!')
 
     else:
         (shift, _) = my_findshiftND(function1, function2)
 
     for i in range(0, len(shift)):
-        function2 = np.roll(function2, shift[i], axis=i)
+        function2 = xp.roll(function2, shift[i], axis=i)
     
     return function2
 
