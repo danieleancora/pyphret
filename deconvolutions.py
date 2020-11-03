@@ -7,27 +7,21 @@ Created on Mon Mar 16 11:13:31 2020
 
 # %% LIBRARIES CALL
 import time
-
-import scipy.ndimage
-import cupyx.scipy.ndimage
-
-# import cupy as cp
 import numpy as np
+import scipy.ndimage
 from scipy import signal 
 
+# !!! import cupy only if installed
 from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
-
 if cupy_enabled:
     import cupy  as cp
-
-
-import pyphret.cusignal.convolution as pyconv
-
-from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db
-
+    import cupyx.scipy.ndimage
 
 import pyphret.backend as pyb
+import pyphret.cusignal.convolution as pyconv
+from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db
+
 
 
 

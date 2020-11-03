@@ -6,12 +6,8 @@ Created on Thu Sep 24 12:51:51 2020
 """
 
 import time
-# import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
-
-# from scipy import ndimage
-
 import pyphret.backend as pyb
 import pyphret.functions as pf
 import pyphret.volumeoperation as pv
@@ -19,9 +15,9 @@ import pyphret.volumeoperation as pv
 import cupyx.scipy.ndimage
 import scipy.ndimage
 
+# !!! import cupy only if installed
 from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
-
 if cupy_enabled:
     import cupy  as cp
 
