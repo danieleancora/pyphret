@@ -6,11 +6,18 @@ Created on Mon Mar 16 12:11:39 2020
 """
 
 import time
-import cupy as cp
 import numpy as np
 import pyphret.functions as pf
 import matplotlib.pyplot as plt
 from pyphret.functions import snrIntensity_db
+
+######### import cupy only if installed #########
+from importlib import util
+cupy_enabled = util.find_spec("cupy") is not None
+if cupy_enabled:
+    import cupy  as cp
+    import cupyx.scipy.ndimage
+######### ----------------------------- #########
 
 
 # %% GENERAL UTILITIES

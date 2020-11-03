@@ -10,14 +10,15 @@ from importlib import util
 import cupyx.scipy
 import scipy 
 
-# !!! import cupy only if installed
+######### import cupy only if installed #########
 from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
 if cupy_enabled:
     import cupy  as cp
+######### ----------------------------- #########
 
 
-# inspired by sigpy
+# %% inspired by sigpy
 # https://github.com/mikgroup/sigpy/blob/master/sigpy/config.py
 
 # this function is taken from SIGPY package from the link

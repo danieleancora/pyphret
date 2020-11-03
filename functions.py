@@ -16,12 +16,12 @@ import matplotlib.pyplot as plt
 from scipy import ndimage
 import pyphret.backend as pyb
 
-# !!! import cupy only if installed
+######### import cupy only if installed #########
 from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
 if cupy_enabled:
     import cupy  as cp
-
+######### ----------------------------- #########
 
 
 # %% alignment routines

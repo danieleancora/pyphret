@@ -15,15 +15,15 @@ import pyphret.volumeoperation as pv
 import cupyx.scipy.ndimage
 import scipy.ndimage
 
-# !!! import cupy only if installed
+######### import cupy only if installed #########
 from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
 if cupy_enabled:
     import cupy  as cp
+######### ----------------------------- #########
 
 
-
-
+# %% 
 def rotatelistStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotateaxes2=(1,2), reference=0, gpu=True):
     # create the new stack
     rotatedStack = np.zeros_like(origStack)

@@ -7,11 +7,18 @@ Created on Mon Apr 20 15:04:08 2020
 
 # LIBRARIES CALL
 import time
-import cupy as cp
 import numpy as np
 import pyphret.functions as pf
 
+######### import cupy only if installed #########
+from importlib import util
+cupy_enabled = util.find_spec("cupy") is not None
+if cupy_enabled:
+    import cupy as cp
+######### ----------------------------- #########
 
+
+# %% 
 def randomGaussianBlobs_2D(dimension=512, fraction=0.999):
     size = int(dimension/2)
     size_pad = int(dimension/4)
