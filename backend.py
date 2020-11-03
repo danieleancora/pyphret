@@ -5,14 +5,21 @@ Created on Wed Sep 23 10:48:44 2020
 @author: Daniele Ancora
 """
 
-import cupy  as cp
 import numpy as np
 from importlib import util
+import cupyx.scipy
+import scipy 
 
-# taken from sigpy
-# https://github.com/mikgroup/sigpy/blob/master/sigpy/config.py
+######### import cupy only if installed #########
+from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
+if cupy_enabled:
+    import cupy  as cp
+######### ----------------------------- #########
 
+
+# %% inspired by sigpy
+# https://github.com/mikgroup/sigpy/blob/master/sigpy/config.py
 
 # this function is taken from SIGPY package from the link
 # https://github.com/mikgroup/sigpy/blob/5bd25cdfda5b72c2728993ad5e6f7288f274ddc4/sigpy/backend.py
@@ -33,6 +40,28 @@ def get_array_module(array):
         return cp.get_array_module(array)
     else:
         return np
+
+
+def get_array_module_scipy(array):
+    """Gets an appropriate module from :mod:`numpy` or :mod:`cupy`.
+
+    This is almost equivalent to :func:`cupy.get_array_module` and here it is 
+    ment to replace it. The difference is that this function can be used even 
+    if cupy is not available.
+
+    Args:
+        array: Input array.
+
+    Returns:
+        module: :mod:`cupy` or :mod:`numpy` is returned based on input.
+    """
+    if cupy_enabled:
+        return cupyx.scipy.get_array_module(array)
+    else:
+        return scipy
+
+
+
 
 
 

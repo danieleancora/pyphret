@@ -6,7 +6,7 @@ Created on Fri Mar 27 20:32:20 2020
 """
 
 import time
-import cupy as cp
+# import cupy as cp
 import numpy as np
 import scipy.signal
 import matplotlib.pyplot as plt
@@ -14,7 +14,16 @@ from skimage.util import view_as_windows
 # import package_hiphret.PR_development_V4_forReal as pr
 import pyphret.retrievals as pr
 
+######### import cupy only if installed #########
+from importlib import util
+cupy_enabled = util.find_spec("cupy") is not None
+if cupy_enabled:
+    import cupy  as cp
+    import cupyx.scipy.ndimage
+######### ----------------------------- #########
 
+
+# %%
 def speckle_autocorrelation(pattern, sigma = None, mask = None, threshold = None,
                            windowSize = 512, windowStep = 128, correction = None,
                            windowing = None, alpha = [0.5, 0.5]):
