@@ -11,9 +11,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cupy as cp
+
 from numba import cuda
 import numpy as np
+
+######### import cupy only if installed #########
+from importlib import util
+cupy_enabled = util.find_spec("cupy") is not None
+if cupy_enabled:
+    import cupy  as cp
+######### ----------------------------- #########
+
 
 
 def get_shared_array(

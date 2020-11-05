@@ -11,10 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cusignal.convolution.convolve import (
+from pyphret.cusignal.convolution.convolve import (
     convolve,
     fftconvolve,
     convolve2d,
     choose_conv_method,
 )
-from cusignal.convolution.correlate import correlate, correlate2d
+from pyphret.cusignal.convolution.correlate import correlate, correlate2d
