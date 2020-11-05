@@ -44,7 +44,7 @@ def rotatelistStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotate
     return rotatedStack
 
 
-def rotatecrosStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotateaxes2=(1,2), reference=0, gpu=True):
+def rotatecrosStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotateaxes2=(1,2), reference=0, follow=True ,gpu=True):
     # create the new stack
     rotatedStack = np.zeros_like(origStack)
     
@@ -53,6 +53,9 @@ def rotatecrosStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotate
     
     rotateAngle1 = np.zeros(origStack.shape[0])
     rotateAngle2 = np.zeros(origStack.shape[0])
+    
+    psi_previous = 0
+    phi_previous = 0
     
     # perform the rotation
     for i in range(origStack.shape[0]):
@@ -73,7 +76,7 @@ def rotatecrosStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotate
                     else:
                         tempStack = origStack[i,:,:,:]
                     
-                    tempVolume = pv.tiltVolume(tempStack, phi, psi, rotateaxes1, rotateaxes2)
+                    tempVolume = pv.tiltVolume(tempStack, phi+phi_previous, psi+psi_previous, rotateaxes1, rotateaxes2)
                     xcorr = pf.my_correlation(referenceVolume, tempVolume)
                     xcorr_max = xcorr.max()
 
@@ -83,9 +86,16 @@ def rotatecrosStack(origStack, anglelist1, anglelist2, rotateaxes1=(0,1), rotate
                     if xcorr.max() > xcorr_store:
                         print('Update angle!')
                         xcorr_store = xcorr.max()
-                        phi_store = phi
-                        psi_store = psi
+                        phi_store = phi+phi_previous
+                        psi_store = psi+psi_previous
                         # volume_store = tempVolume.copy()
+                    # else:
+                    #     break
+                        
+            if follow == True:
+                phi_previous = phi_store.copy()
+                psi_previous = psi_store.copy()
+
                         
             print('Best angle found: phi = ' + str(phi_store) + '  psi = ' + str(psi_store))
             
