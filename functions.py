@@ -73,7 +73,6 @@ def my_findshiftND(function1, function2):
 
     xcorr = my_correlation(function1, function2)
     maxvalue = xcorr.max()
-#    maxposition = xp.unravel_index(xp.argmax(xcorr).get(), xcorr.shape)
     
     if cupy_enabled:
         maxposition = xp.unravel_index(xp.argmax(xcorr).get(), xcorr.shape)
