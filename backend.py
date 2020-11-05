@@ -6,8 +6,6 @@ Created on Wed Sep 23 10:48:44 2020
 """
 
 import numpy as np
-from importlib import util
-import cupyx.scipy
 import scipy 
 
 ######### import cupy only if installed #########
@@ -15,6 +13,7 @@ from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
 if cupy_enabled:
     import cupy  as cp
+    import cupyx.scipy
 ######### ----------------------------- #########
 
 

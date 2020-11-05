@@ -11,9 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cupy as cp
 import numpy as np
 import pyphret.backend as pyb
+
+######### import cupy only if installed #########
+from importlib import util
+cupy_enabled = util.find_spec("cupy") is not None
+if cupy_enabled:
+    import cupy  as cp
+######### ----------------------------- #########
+
 
 from ..utils._caches import _cupy_kernel_cache
 from ..utils.helper_tools import _print_atts, _get_function, _get_tpb_bpg
