@@ -22,8 +22,9 @@ satellite = satellite/satellite.mean()
 psf_long /= psf_long.sum()
 psf_round /= psf_round.sum()
 
-# temp1 = np.zeros((4096,4096))
-# temp2 = np.zeros((4096,4096))
+# sz = 1024
+# temp1 = np.zeros((sz,sz))
+# temp2 = np.zeros((sz,sz))
 
 # temp1[:256,:256] = satellite
 # temp2[:256,:256] = psf_long
@@ -33,7 +34,7 @@ psf_round /= psf_round.sum()
 
 # noise parameters and number of iterations
 lambd = 2**4
-iterations = 10000
+iterations = 1000
     
 
 # %% creating the measurement described in the experiment A - if results do not converse, re-run several times until snr grows
@@ -69,12 +70,11 @@ measureB_noise_corr = np.abs(pf.my_autocorrelation(measureB_noise - lambd))
 # running the algorithm
 deconvolved_B, error_B = pd.anchorUpdateX(cp.asarray(measureB_noise_corr), cp.asarray(psf_round), 
                                           cp.asarray(0), kerneltype='B', iterations=iterations, 
-                                          precision='float64')
+                                          precision='float32')
 
-deconvolved_B, error_B = pd.schulzSnyder(cp.asarray(measureB_noise_corr), cp.asarray(0), iterations=iterations)
-# deconvolved_B, error_B = pd.richardsonLucy(np.asarray(measureB), np.asarray(psf_round), np.asarray(0), iterations=50)
+deconvolved_B, error_B = pd.schulzSnyder(cp.asarray(measureB_noise_corr), cp.asarray(0), iterations=iterations, precision='float32')
 
-
+deconvolved_B, error_B = pd.richardsonLucy(cp.asarray(measureB), cp.asarray(psf_round), np.asarray(0), iterations=10, precision='float32')
 deconvolved_B, error_B = deconvolved_B.get(), error_B.get()
 deconvolved_B = pf.my_alignND(satellite, (deconvolved_B)) 
 deconvolved_B = deconvolved_B/deconvolved_B.mean()
@@ -83,7 +83,7 @@ plt.figure(2)
 plt.subplot(221), plt.imshow(satellite, vmax=satellite.max()), plt.title('original')
 plt.subplot(222), plt.imshow(psf_round), plt.title('psf that blurs the OBJECT!')
 plt.subplot(223), plt.imshow(measureB_noise_corr), plt.title('blurred and noisy autocorrelation')
-plt.subplot(224), plt.imshow(deconvolved_B), plt.title('deconvolved deautocorrelated result')
+plt.subplot(224), plt.imshow(deconvolved_B, vmax=satellite.max()), plt.title('deconvolved deautocorrelated result')
 
 
 
