@@ -3,4 +3,8 @@
 
 This is the test repository for the HI-PHRET project.
 
-whatever else needed
+More info at the link:
+https://cordis.europa.eu/project/id/799230
+
+And a personal blog:
+https://hiphret.wordpress.com/blog/
