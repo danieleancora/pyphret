@@ -12,7 +12,6 @@ for using real FFT protocols.
 # LIBRARIES CALL
 import time
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy import ndimage
 import pyphret.backend as pyb
 
@@ -181,74 +180,71 @@ operation on the phase is done. But it may worth a try.
 
 """
 
-def my_convolution(function1, function2):
+def my_convolution(function1, function2, overwrite_x=False):
+    xpx = pyb.get_array_module_scipy(function1)
+    return xpx.fft.ifftshift(xpx.fft.irfftn(xpx.fft.rfftn(function1, overwrite_x=overwrite_x) * xpx.fft.rfftn(function2, overwrite_x=overwrite_x), s=function1.shape, overwrite_x=overwrite_x))
+
+
+def my_correlation(function1, function2, overwrite_x=False):
     xp = pyb.get_array_module(function1)
-    # return xp.fft.fftshift(xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2), s=function1.shape))
-    return xp.fft.ifftshift(xp.fft.irfftn(xp.fft.rfftn(function1) * xp.fft.rfftn(function2), s=function1.shape))
+    xpx = pyb.get_array_module_scipy(function1)
+    return xpx.fft.ifftshift(xpx.fft.irfftn(xp.conj(xpx.fft.rfftn(function1, overwrite_x=overwrite_x)) * xpx.fft.rfftn(function2, overwrite_x=overwrite_x), s=function1.shape, overwrite_x=overwrite_x))
 
 
-def my_correlation(function1, function2):
+def my_convcorr(function1, function2, overwrite_x=False):
     xp = pyb.get_array_module(function1)
-    return xp.fft.ifftshift(xp.fft.irfftn(xp.conj(xp.fft.rfftn(function1)) * xp.fft.rfftn(function2), s=function1.shape))
-
-
-def my_convcorr(function1, function2):
-    xp = pyb.get_array_module(function1)
+    xpx = pyb.get_array_module_scipy(function1)
     
-    temp = xp.fft.rfftn(function2)
-    temp = xp.conj((xp.fft.rfftn(function1)) * temp) * temp
+    temp = xpx.fft.rfftn(function2, overwrite_x=overwrite_x)
+    temp = xp.conj((xpx.fft.rfftn(function1, overwrite_x=overwrite_x)) * temp) * temp
 
-    # temp = xp.square(xp.abs(xp.fft.rfftn(function2)))
-    # temp = xp.conj(xp.fft.rfftn(function1)) * temp
-
-    # temp = xp.fft.rfftn(function2)
-    # temp = temp.real**2 + temp.imag**2
-    # temp = xp.conj(xp.fft.rfftn(function1)) * temp
-    
-    # return xp.fft.fftshift((xp.fft.irfftn(temp)))
-    return xp.fft.irfftn(temp, s=function1.shape)
+    return xpx.fft.irfftn(temp, s=function1.shape, overwrite_x=overwrite_x)
 
 
-def my_convcorr_sqfft(function1, function2):
+def my_convcorr_sqfft(function1, function2, overwrite_x=False):
     xp = pyb.get_array_module(function1)
-    temp = xp.conj(xp.fft.rfftn(function1)) * function2
-    return xp.fft.irfftn(temp, s=function1.shape)
+    xpx = pyb.get_array_module_scipy(function1)
+    temp = xp.conj(xpx.fft.rfftn(function1, overwrite_x=overwrite_x)) * function2
+    return xpx.fft.irfftn(temp, s=function1.shape, overwrite_x=overwrite_x)
 
 
-def my_correlation_withfft(function1, function2):
+def my_correlation_withfft(function1, function2, overwrite_x=False):
     xp = pyb.get_array_module(function1)
-    temp = xp.conj(xp.fft.rfftn(function1)) * function2
-    return xp.fft.fftshift(xp.fft.irfftn(temp, s=function1.shape))
+    xpx = pyb.get_array_module_scipy(function1)
+    temp = xp.conj(xpx.fft.rfftn(function1, overwrite_x=overwrite_x)) * function2
+    return xpx.fft.fftshift(xpx.fft.irfftn(temp, s=function1.shape, overwrite_x=overwrite_x))
 
 
-def my_correlationCentered(function1, function2):
+def my_correlationCentered(function1, function2, overwrite_x=False):
     xp = pyb.get_array_module(function1)
+    xpx = pyb.get_array_module_scipy(function1)
 
-    temp = xp.conj(xp.fft.rfftn(function1))
-    temp = temp * xp.fft.rfftn(function2)
+    temp = xp.conj(xpx.fft.rfftn(function1, overwrite_x=overwrite_x))
+    temp = temp * xpx.fft.rfftn(function2, overwrite_x=overwrite_x)
        
-    temp = xp.fft.irfftn(temp, s=function1.shape)
-    temp = xp.fft.fftshift(temp)
+    temp = xpx.fft.irfftn(temp, s=function1.shape, overwrite_x=overwrite_x)
+    temp = xpx.fft.fftshift(temp)
     
     # trying to remove residual shifts
-    temp = autocorrelation2fouriermod(temp)
-    temp = fouriermod2autocorrelation(temp)
+    temp = autocorrelation2fouriermod(temp, overwrite_x=overwrite_x)
+    temp = fouriermod2autocorrelation(temp, overwrite_x=overwrite_x)
     
     return temp
 
 
-def my_autocorrelation(x):
-    return my_correlation(x, x)
+def my_autocorrelation(x, overwrite_x=False):
+    return my_correlation(x, x, overwrite_x=overwrite_x)
 
 # WARNING: this function may not work with odd array size
-def autocorrelation2fouriermod(x):
+def autocorrelation2fouriermod(x, overwrite_x=False):
     xp = pyb.get_array_module(x)
-    return xp.sqrt(xp.abs(xp.fft.rfftn(x)))
+    xpx = pyb.get_array_module_scipy(x)
+    return xp.sqrt(xp.abs(xpx.fft.rfftn(x, overwrite_x=overwrite_x)))
 
 # WARNING: this function does not work with odd array size
-def fouriermod2autocorrelation(x):
-    xp = pyb.get_array_module(x)
-    return xp.fft.fftshift(xp.fft.irfftn(x**2))
+def fouriermod2autocorrelation(x, overwrite_x=False):
+    xpx = pyb.get_array_module_scipy(x)
+    return xpx.fft.fftshift(xpx.fft.irfftn(x**2, overwrite_x=overwrite_x))
 
 
 # %% Blurring functions 

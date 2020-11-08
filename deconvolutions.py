@@ -346,7 +346,7 @@ def maxAPosteriori(signal, kernel, iterations=10, measure=True, clip=True, verbo
 
 
 # %% DE-AUTOCORRELATION AND DE-AUTOCONVOLUTION ROUTINES WITH DEBLURRING
-def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B', iterations=10, measure=True, clip=False, verbose=True):
+def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B', iterations=10, precision='float64', measure=True, clip=False, verbose=True):
     """
     Reconstruction of signal_deconv from its auto-correlation signal, via a 
     RichardsonLucy-like multiplicative procedure. At the same time, the kernel 
@@ -385,10 +385,11 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
         Euclidean distance between signal and the auto-correlation of signal_deconv.
         Last implementation returns the SNR instead of euclidean distance.
 
-    """
-    
+    """    
+
     # for code agnosticity between Numpy/Cupy
     xp = pyb.get_array_module(signal)
+    xpx = pyb.get_array_module_scipy(signal)
     
     # for performance evaluation
     start_time = time.time()
@@ -405,14 +406,14 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
 
     # compute the norm of the fourier transform of the kernel associated with the IEEE paper
     if kerneltype == 'A':
-        kernel = xp.abs(xp.fft.rfftn(kernel))
+        kernel = xp.abs(xpx.fft.rfftn(kernel, overwrite_x=True))
     elif kerneltype == 'B':
-        kernel = xp.square(xp.abs(xp.fft.rfftn(kernel)))
+        kernel = xp.square(xp.abs(xpx.fft.rfftn(kernel, overwrite_x=True)))
     elif kerneltype == 'C':
-        kernel = xp.abs(xp.fft.irfftn(kernel))
+        kernel = xp.abs(xpx.fft.irfftn(kernel, overwrite_x=True))
     else:
         print('Wrong input, I have choosen Anchor Update scheme, B')
-        kernel = xp.square(xp.abs(xp.fft.rfftn(kernel)))
+        kernel = xp.square(xp.abs(xpx.fft.rfftn(kernel, overwrite_x=True)))
 
     # starting guess with a flat image
     if signal_deconv.any()==0:
@@ -424,7 +425,14 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
     
     # normalization
     signal_deconv = signal_deconv/signal_deconv.sum()
-        
+    
+    # cast to choosen precision
+    signal, kernel, signal_deconv = signal.astype(precision), kernel.astype(precision), signal_deconv.astype(precision)
+    print(signal.dtype)
+    print(kernel.dtype)
+    print(signal_deconv.dtype)
+
+    
     # to measure the distance between the guess convolved and the signal
     error = None    
     if measure == True:
@@ -462,7 +470,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
 
 
         # multiplicative update, for the Anchor Update approximation
-        signal_deconv *= my_convolution(relative_blur, kernel_mirror)
+        signal_deconv *= my_convolution(relative_blur, kernel_mirror, overwrite_x=True)
 
         # multiplicative update, remaining term. This gives wrong reconstructions
         # signal_deconv *= my_correlation(axisflip(relative_blur), kernel_mirror)
@@ -511,8 +519,10 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, measure=True, 
 
     """
     
-    xp = pyb.get_array_module(correlation)
-
+    # for code agnosticity between Numpy/Cupy
+    xp = pyb.get_array_module(signal)
+    # xpx = pyb.get_array_module_scipy(signal)
+    
 
     # for performance evaluation
     start_time = time.time()
@@ -529,10 +539,13 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, measure=True, 
         signal_decorr = xp.full(correlation.shape,0.5) + 0.01*xp.random.rand(*correlation.shape)
     else:
         signal_decorr = prior.copy() #+ 0.1*prior.max()*xp.random.rand(*signal.shape)
-        
+            
     R_0 = signal_decorr.sum()
     signal_decorr = signal_decorr / R_0
     relative_corr = xp.zeros_like(signal_decorr)
+
+    # cast to choosen precision
+    # correlation, signal_decorr, relative_corr = correlation.astype(precision), signal_decorr.astype(precision), relative_corr.astype(precision)
 
     # to measure the distance between the guess convolved and the signal
     error = None    
