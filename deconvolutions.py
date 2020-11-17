@@ -220,10 +220,10 @@ def richardsonLucy(signal, kernel, prior=np.float32(0), iterations=10, precision
     xp = pyb.get_array_module(signal)
     start_time = time.time()
     
-    if iterations<100: 
+    if iterations<1: 
         breakcheck = iterations
     else:
-        breakcheck = 100
+        breakcheck = 1
     
     epsilon = 1e-7
     
@@ -465,6 +465,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
         # avoid errors due to division by zero or inf
         relative_blur[xp.isinf(relative_blur)] = epsilon
         relative_blur = xp.nan_to_num(relative_blur)
+        relative_blur = xp.abs(relative_blur)
 
         # multiplicative update, for the full model
         # signal_deconv *= 0.5 * (my_convolution(relative_blur, kernel_mirror) + my_correlation(axisflip(relative_blur), kernel_mirror))
@@ -524,10 +525,10 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, precision='flo
 
     epsilon = 1e-7
 
-    if iterations<10: 
+    if iterations<100: 
         breakcheck = iterations
     else:
-        breakcheck = 10
+        breakcheck = 100
         
     # starting guess with a flat image
     if prior.any()==0:
@@ -567,6 +568,7 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, precision='flo
         # avoid errors due to division by zero or inf
         relative_corr[xp.isinf(relative_corr)] = epsilon 
         relative_corr = xp.nan_to_num(relative_corr)
+        relative_corr = xp.abs(relative_corr)
 
         # multiplicative update 
         # signal_decorr *= my_correlation(axisflip(signal_decorr), (relative_corr)) / R_0
