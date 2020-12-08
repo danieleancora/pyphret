@@ -259,6 +259,7 @@ def richardsonLucy(signal, kernel, prior=np.float32(0), iterations=10, precision
         # avoid errors due to division by zero or inf
         relative_blur[xp.isinf(relative_blur)] = epsilon
         relative_blur = xp.nan_to_num(relative_blur)
+        relative_blur = xp.abs(relative_blur)
 
         # multiplicative update 
         signal_deconv *= my_convolution(relative_blur, kernel_mirror)
