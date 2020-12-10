@@ -129,21 +129,40 @@ def wiener_deconvolution(signal, kernel, snr):
 
 
 # %% DECONVOLUTION ROUTINES - SMALL KERNEL IMPLEMENATIONS
-def richardsonLucy_smallKernel(image, psf, iterations=10, clip=True, verbose=False):
+def richardsonLucy_smallKernel(image, psf, iterations=10, clip=False, verbose=True, measure=True):
     print('This procedure may be very slow! -> Use it with small psf!!!')
     xp = pyb.get_array_module(image)
     xps = cupyx.scipy.get_array_module(image)
 
+    if iterations<1: 
+        breakcheck = iterations
+    else:
+        breakcheck = 1
+    
+    epsilon = 1e-7
+
     image = image.astype(xp.float)
     psf = psf.astype(xp.float)
-    im_deconv = xp.full(image.shape, 0.5)
+    # im_deconv = xp.full(image.shape, 0.5)
+    im_deconv = image.copy()
     psf_flip = axisflip(psf)
+    
+    error = None    
+    if measure == True:
+        error = xp.zeros(iterations)
     
     for i in range(iterations):
         if verbose==True:
             print('Iteration ' + str(i))
             
         relative_blur = xps.ndimage.convolve(im_deconv, psf)
+
+        if measure==True:
+            # error[i] = xp.linalg.norm(image/image.sum()-relative_blur/relative_blur.sum())
+            error[i] = snrIntensity_db(image/image.sum(), xp.abs(image/image.sum()-relative_blur/relative_blur.sum()))
+            if (error[i] < error[i-breakcheck]) and i > breakcheck:
+                break
+
         relative_blur = image / relative_blur
         im_deconv *= xps.ndimage.convolve(relative_blur, psf_flip)
 
@@ -151,7 +170,7 @@ def richardsonLucy_smallKernel(image, psf, iterations=10, clip=True, verbose=Fal
         im_deconv[im_deconv > 1] = 1
         im_deconv[im_deconv < -1] = -1
 
-    return im_deconv
+    return im_deconv, error
 
 
 def maxAPosteriori_smallKernel(image, psf, iterations=10, clip=True, verbose=False):
@@ -259,6 +278,7 @@ def richardsonLucy(signal, kernel, prior=np.float32(0), iterations=10, precision
         # avoid errors due to division by zero or inf
         relative_blur[xp.isinf(relative_blur)] = epsilon
         relative_blur = xp.nan_to_num(relative_blur)
+        relative_blur = xp.abs(relative_blur)
 
         # multiplicative update 
         signal_deconv *= my_convolution(relative_blur, kernel_mirror)
@@ -675,3 +695,101 @@ def invert_autoconvolution(magnitude, prior=None, mask=None, measure=True,
     return (x_hat, ratio)
     
 
+
+# %% --------------------------------------------------------------------------
+def anchorUpdateA(correlation, kernel, prior=np.float32(0), iterations=10, precision='float64', measure=True, clip=False, verbose=True):
+    """
+    De-AutoCorrelation protocol implemented by Schultz-Snyder. It needs to be 
+    checked to assess the working procedure.
+
+    Parameters
+    ----------
+    correlation : TYPE
+        DESCRIPTION.
+    prior : TYPE, optional
+        DESCRIPTION. The default is np.float32(0).
+    iterations : TYPE, optional
+        DESCRIPTION. The default is 10.
+    measure : TYPE, optional
+        DESCRIPTION. The default is True.
+    clip : TYPE, optional
+        DESCRIPTION. The default is True.
+    verbose : TYPE, optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    signal_decorr : TYPE
+        DESCRIPTION.
+    error : TYPE
+        DESCRIPTION.
+
+    """
+    
+    xp = pyb.get_array_module(correlation)
+
+    # for performance evaluation
+    start_time = time.time()
+
+    epsilon = 1e-7
+
+    if iterations<100: 
+        breakcheck = iterations
+    else:
+        breakcheck = 100
+        
+    # starting guess with a flat image
+    if prior.any()==0:
+        signal_decorr = xp.full(correlation.shape,0.5) + 0.01*xp.random.rand(*correlation.shape)
+    else:
+        signal_decorr = prior.copy() #+ 0.1*prior.max()*xp.random.rand(*signal.shape)
+        
+    R_0 = signal_decorr.mean()
+    signal_decorr = signal_decorr / R_0
+    relative_corr = xp.zeros_like(signal_decorr)
+
+    # cast to choosen precision
+    correlation, signal_decorr, relative_corr = correlation.astype(precision), signal_decorr.astype(precision), relative_corr.astype(precision)
+
+    # to measure the distance between the guess convolved and the signal
+    error = None    
+    if measure == True:
+        error = xp.zeros(iterations)
+
+    for i in range(iterations):
+        
+        signal_blurred = my_convolution(signal_decorr, kernel)
+        
+        relative_corr = my_correlation(signal_decorr, signal_blurred)
+        
+        if measure==True:
+            # error[i] = xp.linalg.norm(correlation/correlation.sum()-relative_corr/relative_corr.sum())
+            error[i] = snrIntensity_db(correlation/correlation.sum(), xp.abs(correlation/correlation.sum()-relative_corr/relative_corr.sum()))
+            if (error[i] < error[i-breakcheck]) and i > breakcheck:
+                break
+
+        if verbose==True and (i % 100)==0 and measure==False:
+            print('Iteration ' + str(i))
+        elif verbose==True and (i % 100)==0 and measure==True:
+            print('Iteration ' + str(i) + ' - noise level: ' + str(error[i]))
+
+        # relative_corr = 0.5*(correlation + axisflip(correlation)) / relative_corr
+        relative_corr = (correlation) / relative_corr
+
+        # avoid errors due to division by zero or inf
+        relative_corr[xp.isinf(relative_corr)] = epsilon 
+        relative_corr = xp.nan_to_num(relative_corr)
+        relative_corr = xp.abs(relative_corr)
+
+        # multiplicative update 
+        signal_decorr *= (my_correlation(relative_corr, signal_blurred) + my_convolution(relative_corr, signal_blurred)) / R_0
+        
+    if clip:
+        signal_decorr[signal_decorr > +1] = +1
+        signal_decorr[signal_decorr < -1] = -1
+
+    print("\n\n Algorithm finished. Performance:")
+    print("--- %s seconds ----" % (time.time() - start_time))
+    print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
+
+    return signal_decorr, error
