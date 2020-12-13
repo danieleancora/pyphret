@@ -287,9 +287,11 @@ def richardsonLucy(signal, kernel, prior=np.float32(0), iterations=10, precision
         signal_deconv[signal_deconv > +1] = +1
         signal_deconv[signal_deconv < -1] = -1
 
-    print("\n\n Algorithm finished. Performance:")
-    print("--- %s seconds ----" % (time.time() - start_time))
-    print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
+    if verbose==True:
+        print("\n\n Algorithm finished. Performance:")
+        print("--- %s seconds ----" % (time.time() - start_time))
+        print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
+
     return signal_deconv, error
     
 

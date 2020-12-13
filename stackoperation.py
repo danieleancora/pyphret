@@ -272,3 +272,93 @@ def focusStack(origStack, sigma=2, axis=0):
      
     return focussedStack+minvalue
     
+
+def poissonreweightStack(origStack, gpu=True):
+    # pop out a warning
+    print('Calculating the stack reweigheted possion statistics...')
+
+    # create the stack
+    rewStack = np.zeros_like(origStack)
+
+    if gpu == True:
+        # perform the rotation
+        print('Running on the GPU')
+        # calculating the fft_norm
+        tempStack = cp.asarray(origStack[0,:,:,:]).copy()
+        fft_norm = (1/origStack.shape[0]) * (cp.sqrt(cp.abs(cp.fft.rfft(tempStack))))
+        for i in range(1,origStack.shape[0]):
+            print('FFT-norm contribution view ' + str(i))     
+            tempStack = cp.asarray(origStack[i,:,:,:])
+            fft_norm = fft_norm + (1/origStack.shape[0]) * (cp.sqrt(cp.abs(cp.fft.rfft(tempStack))))
+            
+        for i in range(0,origStack.shape[0]):
+            print('Reweighting view ' + str(i))     
+            tempStack = cp.asarray(origStack[i,:,:,:])
+            rewStack[i,:,:,:] = (cp.fft.irfft((cp.sqrt(cp.abs(cp.fft.rfft(tempStack)))/fft_norm) * cp.fft.rfft(tempStack))).get()
+
+    else:
+        # perform the rotation
+        print('Running on the CPU')
+        # calculating the fft_norm
+        tempStack = np.asarray(origStack[0,:,:,:]).copy()
+        fft_norm = (1/origStack.shape[0]) * (np.sqrt(np.abs(np.fft.rfft(tempStack))))
+        for i in range(1,origStack.shape[0]):
+            print('FFT-norm contribution view ' + str(i))     
+            tempStack = np.asarray(origStack[i,:,:,:])
+            fft_norm = fft_norm + (1/origStack.shape[0]) * (np.sqrt(np.abs(np.fft.rfft(tempStack))))
+            
+        for i in range(0,origStack.shape[0]):
+            print('Reweighting view ' + str(i))     
+            tempStack = np.asarray(origStack[i,:,:,:])
+            rewStack[0,:,:,:] = (np.fft.irfft((np.sqrt(np.abs(np.fft.rfft(tempStack)))/fft_norm) * np.fft.rfft(tempStack)))
+
+    return rewStack
+
+
+# def poissonAverageStack(origStack, gpu=True):
+#     # pop out a warning
+#     print('Calculating the stack reweigheted possion statistics...')
+
+#     # create the stack
+#     rewStack = np.zeros_like(origStack[0,:,:,:])
+
+#     if gpu == True:
+#         # perform the rotation
+#         print('Running on the GPU')
+#         # calculating the fft_norm
+
+#         fft_norm = (1/origStack.shape[0]) * np.sqrt(np.abs(np.fft.rfft(origStack[0,:,:,:])))
+#         for i in range(1,origStack.shape[0]):
+#             print(i)
+#             fft_norm = fft_norm + (1/origStack.shape[0]) * np.sqrt(np.abs(np.fft.rfft(origStack[i,:,:,:])))
+            
+        
+#         mean_init = (np.sqrt(np.abs(np.fft.rfft(origStack[0,:,:,:])))/fft_norm) * np.fft.rfft(origStack[0,:,:,:])
+        
+#         for i in range(1,origStack.shape[0]):
+#             print(i)
+#             mean_init = mean_init + (np.sqrt(np.abs(np.fft.rfft(origStack[i,:,:,:])))/fft_norm) * np.fft.rfft(origStack[i,:,:,:])
+        
+#         mean_real = np.fft.irfft(mean_init)
+
+
+#     else:
+#         # perform the rotation
+#         print('Running on the CPU')
+#         # calculating the fft_norm
+#         tempStack = np.asarray(origStack[0,:,:,:]).copy()
+#         fft_norm = (1/origStack.shape[0]) * (np.sqrt(np.abs(np.fft.rfft(tempStack))))
+#         for i in range(1,origStack.shape[0]):
+#             print('FFT-norm contribution view ' + str(i))     
+#             tempStack = np.asarray(origStack[i,:,:,:])
+#             fft_norm = fft_norm + (1/origStack.shape[0]) * (np.sqrt(np.abs(np.fft.rfft(tempStack))))
+            
+#         for i in range(0,origStack.shape[0]):
+#             print('Reweighting view ' + str(i))     
+#             tempStack = np.asarray(origStack[i,:,:,:])
+#             rewStack[0,:,:,:] = (np.fft.irfft((np.sqrt(np.abs(np.fft.rfft(tempStack)))/fft_norm) * np.fft.rfft(tempStack)))
+
+#     return rewStack
+
+
+
