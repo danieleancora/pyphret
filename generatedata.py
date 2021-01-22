@@ -99,14 +99,12 @@ def randomAmorphousVases_3D(intdimension=512, extdimension=1024, volumeradius=2*
     sample_vase = pf.axisflip(hyp**2) * pf.my_gaussblur(sample_vase**2, 0.5)   
     sample_vase = np.abs(sample_vase) 
     sample_vase /= sample_vase.max()
-    
-    
 
     return sample_vase
 
 
 
-def randomAmorphousVases_3Dspeckled(intdimension=512, extdimension=1024, volumeradius=2*(64+16), maskradius1=13, maskradius2=11):
+def randomAmorphousVases_3Dspeckled(intdimension=512, extdimension=1024, volumeradius=2*(64+16), maskradius1=13, maskradius2=11, outerVein = 0.95, innerVein=0.93):
     # definition of 2 concentric masks, used for amorphous generation
     mask1 = pf.spherical_mask3D(extdimension, extdimension, extdimension, center=None, radius=maskradius1)
     mask2 = pf.spherical_mask3D(extdimension, extdimension, extdimension, center=None, radius=maskradius2)
@@ -130,7 +128,8 @@ def randomAmorphousVases_3Dspeckled(intdimension=512, extdimension=1024, volumer
     hyp[hyp==1] = 0
     
     # creating the outer veins
-    threshold_veins = 0.95
+    # threshold_veins = 0.95
+    threshold_veins = outerVein
     sample = np.float32(hyp>threshold_veins)
     sample = sample*hyp
     sample = np.float32(sample) - threshold_veins
@@ -138,7 +137,8 @@ def randomAmorphousVases_3Dspeckled(intdimension=512, extdimension=1024, volumer
     sample /= sample.max()
     
     # creating the inner veins
-    threshold_veins = 0.93
+    # threshold_veins = 0.93
+    threshold_veins = innerVein
     sample_veins = np.float32(hyp>threshold_veins)
     sample_veins = sample_veins*hyp
     sample_veins = np.float32(sample_veins) - threshold_veins

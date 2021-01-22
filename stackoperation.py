@@ -263,7 +263,6 @@ def focusStack(origStack, sigma=2, axis=0):
         # laplaceStack[i,:,:,:] = np.abs(scipy.ndimage.laplace(origStack[i,:,:,:]))
         laplaceStack[i,:,:,:] = np.abs(scipy.ndimage.gaussian_filter(scipy.ndimage.laplace(origStack[i,:,:,:]), sigma))      
         # laplaceStack[i,:,:,:] = np.abs(scipy.ndimage.gaussian_laplace(origStack[i,:,:,:], sigma=2))
-        
     
     index_array = np.argmax(laplaceStack, axis=axis)
 
