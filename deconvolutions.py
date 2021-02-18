@@ -461,6 +461,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
     error = None    
     if measure == True:
         error = xp.zeros(iterations)
+        error_eucl = xp.zeros(iterations)
 
     for i in range(iterations):
         # I use this property to make computation faster
@@ -472,7 +473,7 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
         
         # compute the measured distance metric if given
         if measure==True:
-            # error[i] = xp.linalg.norm(signal/signal.sum()-relative_blur/relative_blur.sum())
+            error_eucl[i] = xp.linalg.norm(signal/signal.sum()-relative_blur/relative_blur.sum())
             error[i] = snrIntensity_db(signal/signal.sum(), xp.abs(signal/signal.sum()-relative_blur/relative_blur.sum()))
             if (error[i] < error[i-breakcheck]) and i > breakcheck:
                 break
@@ -507,7 +508,8 @@ def anchorUpdateX(signal, kernel, signal_deconv=np.float32(0), kerneltype = 'B',
     print("\n\n Algorithm finished. Performance:")
     print("--- %s seconds ----" % (time.time() - start_time))
     print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
-    return signal_deconv, error #,kernel_update
+    # return signal_deconv, error #,kernel_update
+    return signal_deconv, error, error_eucl
     # return kernel_mirror, error #
 
 
