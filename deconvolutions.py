@@ -21,7 +21,7 @@ if cupy_enabled:
 
 import pyphret.backend as pyb
 # import pyphret.cusignal.convolution as pyconv
-from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db
+from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db, my_correlation_alongaxes
 
 
 # %% DENOISE ROUTINES
@@ -296,6 +296,97 @@ def richardsonLucy(signal, kernel, prior=np.float32(0), iterations=10, precision
 
     return signal_deconv, error
     
+
+def richardsonLucy_alongaxes(signal, kernel, axes=None, prior=np.float32(0), iterations=10, precision='float64', measure=True, clip=False, verbose=True):
+    """
+    Deconvolution using the Richardson Lucy algorithm.
+
+    Parameters
+    ----------
+    signal : ndarray, either numpy or cupy. 
+        The signal to be deblurred.
+    kernel : ndarray, either numpy or cupy. 
+        Point spread function that blurred the signal. It must be 
+        signal.shape == kernel.shape.
+    prior : ndarray, either numpy or cupy, optional
+        the prior information to start the reconstruction. The default is np.float32(0).
+    iterations : integer, optional
+        Number of iteration to be done. The default is 10.
+    measure : boolean, optional
+        If true computes the euclidean distance between signal and the auto-correlation of signal_deconv. The default is True.
+    clip : boolean, optional
+        Clip the results within the range -1 to 1. The default is False.
+    verbose : boolean, optional
+        Print current step value. The default is True.
+
+    Returns
+    -------
+    signal_deconv : ndarray, either numpy or cupy.
+        The deconvolved signal with respect the given kernel at ith iteration.
+    error : one dimensional ndarray.
+        Euclidean distance between signal and the auto-correlation of signal_deconv.
+
+    """
+    xp = pyb.get_array_module(signal)
+    start_time = time.time()
+    
+    if iterations<1: 
+        breakcheck = iterations
+    else:
+        breakcheck = 1
+    
+    epsilon = 1e-7
+    
+    # starting guess with a flat image
+    if prior.any()==0:
+        signal_deconv = xp.full(signal.shape,0.5) + 0.01*xp.random.rand(*signal.shape)
+    else:
+        signal_deconv = prior #+ 0.1*prior.max()*xp.random.rand(*signal.shape)
+
+    # cast to choosen precision
+    signal, kernel, signal_deconv = signal.astype(precision), kernel.astype(precision), signal_deconv.astype(precision)
+
+    kernel_mirror = xp.flip(kernel, axis=axes)
+    
+    error = None    
+    if measure == True:
+        error = xp.zeros(iterations)
+
+    for i in range(iterations):
+        if verbose==True and (i % 100)==0:
+            print('Iteration ' + str(i))
+
+        relative_blur = my_correlation_alongaxes(signal_deconv, kernel, axes=axes)
+        
+        if measure==True:
+            # error[i] = xp.linalg.norm(signal/signal.sum()-relative_blur/relative_blur.sum())
+            error[i] = snrIntensity_db(signal/signal.sum(), xp.abs(signal/signal.sum()-relative_blur/relative_blur.sum()))
+            if (error[i] < error[i-breakcheck]) and i > breakcheck:
+                break
+            
+        relative_blur = signal / relative_blur
+        
+        # avoid errors due to division by zero or inf
+        relative_blur[xp.isinf(relative_blur)] = epsilon
+        relative_blur = xp.nan_to_num(relative_blur)
+        relative_blur = xp.abs(relative_blur)
+
+        # multiplicative update 
+        signal_deconv *= my_correlation_alongaxes(relative_blur, kernel_mirror, axes=axes)
+        
+    if clip:
+        signal_deconv[signal_deconv > +1] = +1
+        signal_deconv[signal_deconv < -1] = -1
+
+    if verbose==True:
+        print("\n\n Algorithm finished. Performance:")
+        print("--- %s seconds ----" % (time.time() - start_time))
+        print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
+
+    return signal_deconv, error
+    
+
+
 
 def maxAPosteriori(signal, kernel, prior=np.float32(0), iterations=10, precision='float64', measure=True, clip=False, verbose=False):
     """

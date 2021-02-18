@@ -190,6 +190,19 @@ def my_correlation(function1, function2, overwrite_x=False):
     xpx = pyb.get_array_module_scipy(function1)
     return xpx.fft.ifftshift(xpx.fft.irfftn(xp.conj(xpx.fft.rfftn(function1, overwrite_x=overwrite_x)) * xpx.fft.rfftn(function2, overwrite_x=overwrite_x), s=function1.shape, overwrite_x=overwrite_x))
 
+def my_correlation_alongaxes(function1, function2, axes=None, overwrite_x=False):
+    xp = pyb.get_array_module(function1)
+    xpx = pyb.get_array_module_scipy(function1)
+    
+    function1_fft = xpx.fft.rfftn(function1, axes=axes, overwrite_x=overwrite_x)
+    function2_fft = xpx.fft.rfftn(function2, axes=axes, overwrite_x=overwrite_x)
+    
+    spectralproduct = xp.conj(function1_fft) * function2_fft
+    
+    convolved = xpx.fft.irfftn(spectralproduct,  axes=axes, overwrite_x=overwrite_x)
+    
+    return xp.flip(xpx.fft.ifftshift(convolved, axes=axes), axis=axes)
+
 
 def my_convcorr(function1, function2, overwrite_x=False):
     xp = pyb.get_array_module(function1)
