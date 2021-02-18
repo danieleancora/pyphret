@@ -130,7 +130,9 @@ def wiener_deconvolution(signal, kernel, snr):
 
 # %% DECONVOLUTION ROUTINES - SMALL KERNEL IMPLEMENATIONS
 def richardsonLucy_smallKernel(image, psf, iterations=10, clip=False, verbose=True, measure=True):
-    print('This procedure may be very slow! -> Use it with small psf!!!')
+    if verbose == True: 
+        print('This procedure may be very slow! -> Use it with small psf!!!')
+    
     xp = pyb.get_array_module(image)
     xps = cupyx.scipy.get_array_module(image)
 
