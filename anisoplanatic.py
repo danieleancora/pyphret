@@ -131,8 +131,9 @@ def varyingDeconvRL_fft(imag, psfmap, iterations, windowSize, windowStep, window
     expanded_imag = view_as_windows(imag, (windowSize, windowSize), step=(windowStep, windowStep)).copy()
 
     # interpolate the number of psf mapped in the image (do not exagerate with this)
+    padlength = int((windowSize - psfmap.shape[2])/2)
     expanded_psfmap = ndimage.zoom(psfmap, (expanded_imag.shape[0]/psfmap.shape[0],expanded_imag.shape[0]/psfmap.shape[0],1,1))
-    expanded_psfmap = np.pad(expanded_psfmap, ((0,0),(0,0),(166,166),(166,166)))
+    expanded_psfmap = np.pad(expanded_psfmap, ((0,0),(0,0),(padlength,padlength),(padlength,padlength)))
 
     # expanded_psfmap = np.abs(expanded_psfmap)
 
