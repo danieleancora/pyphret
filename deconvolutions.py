@@ -21,7 +21,7 @@ if cupy_enabled:
 
 import pyphret.backend as pyb
 # import pyphret.cusignal.convolution as pyconv
-from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db, my_correlation_alongaxes
+from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db, my_correlation_alongaxes, my_convolution_alongaxes
 
 
 # %% DENOISE ROUTINES
@@ -353,10 +353,10 @@ def richardsonLucy_alongaxes(signal, kernel, axes=None, prior=np.float32(0), ite
         error = xp.zeros(iterations)
 
     for i in range(iterations):
-        if verbose==True and (i % 100)==0:
+        if verbose==True and (i % 1)==0:
             print('Iteration ' + str(i))
 
-        relative_blur = my_correlation_alongaxes(signal_deconv, kernel, axes=axes)
+        relative_blur = my_convolution_alongaxes(signal_deconv, kernel, axes=axes)
         
         if measure==True:
             # error[i] = xp.linalg.norm(signal/signal.sum()-relative_blur/relative_blur.sum())
@@ -372,7 +372,7 @@ def richardsonLucy_alongaxes(signal, kernel, axes=None, prior=np.float32(0), ite
         relative_blur = xp.abs(relative_blur)
 
         # multiplicative update 
-        signal_deconv *= my_correlation_alongaxes(relative_blur, kernel_mirror, axes=axes)
+        signal_deconv *= my_convolution_alongaxes(relative_blur, kernel_mirror, axes=axes)
         
     if clip:
         signal_deconv[signal_deconv > +1] = +1

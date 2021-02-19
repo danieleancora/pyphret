@@ -91,7 +91,41 @@ def varyingDeconvRL(imag, psfmap, iterations, windowSize, windowStep, windowOver
 
 
 # A LOT FASTER, BUT I AM NOT YET CONVINCED BY THE RESULT
-def varyingDeconvRL_fft(imag, psfmap, iterations, windowSize, windowStep, windowOverlap):
+def varyingDeconvRL_fft(imag, psfmap, iterations, windowSize, windowStep, windowOverlap, gpu=False):
+    """
+    Function that aims at deconvolving different regions of the image subject 
+    to a varying (anisoplanatic) point-spread function. Deconvolution is 
+    accomplished in separate windows that are tiled back accordingly to a 
+    masking criterion. This implementation pads the psf to the same size of the
+    tiled windonw in order to perform fft convolutions.
+
+    Parameters
+    ----------
+    imag : bi-dimensional float 
+        the image the we want to deconvolve.
+    psfmap : four-dimensional float 
+        psf that we use for deconvolution. the first two dimensions are used 
+        for mapping the psf in space, the third and fourth are spatial 
+        dimension of each psf.
+    iterations : integer
+        number of iterations to run.
+    windowSize : integer, choose with care.
+        size of each tile in which we carry out the deconvolution.
+    windowStep : integer, choose with care.
+        slide the tile by this amount in both spatial directions.
+    windowOverlap : integer.
+        it is used to discard a portion around each tile to avoid the inclusion
+        of boundary artifacts. A value around 32 should fit any problem. 
+    gpu : boolean
+        choose wether to use or not GPU (cupy) computation
+
+    Returns
+    -------
+    imag_rebuild : float
+        the image deconvolved, tiled and normalized according to the masking 
+        criterion.
+
+    """
 
     # split image in overlapping windows
     expanded_imag = view_as_windows(imag, (windowSize, windowSize), step=(windowStep, windowStep)).copy()
@@ -100,10 +134,16 @@ def varyingDeconvRL_fft(imag, psfmap, iterations, windowSize, windowStep, window
     expanded_psfmap = ndimage.zoom(psfmap, (expanded_imag.shape[0]/psfmap.shape[0],expanded_imag.shape[0]/psfmap.shape[0],1,1))
     expanded_psfmap = np.pad(expanded_psfmap, ((0,0),(0,0),(166,166),(166,166)))
 
+    # expanded_psfmap = np.abs(expanded_psfmap)
+
     # decovolution applied only on some directions
-    expanded_deconv, error = pyd.richardsonLucy_alongaxes(cp.asarray(expanded_imag), cp.asarray(expanded_psfmap), axes=(2,3),
-                                                          iterations=iterations, verbose=False)
-    expanded_deconv, error = expanded_deconv.get(), error.get()
+    if gpu == True:
+        expanded_deconv, error = pyd.richardsonLucy_alongaxes(cp.asarray(expanded_imag), cp.asarray(expanded_psfmap), axes=(2,3),
+                                                              iterations=iterations, verbose=True)
+        expanded_deconv, error = expanded_deconv.get(), error.get()
+    else:
+        expanded_deconv, error = pyd.richardsonLucy_alongaxes(np.asarray(expanded_imag), np.asarray(expanded_psfmap), axes=(2,3),
+                                                              iterations=iterations, verbose=True)        
     
     # recompose the image by tiling
     imag_rebuild = np.zeros_like(imag)
