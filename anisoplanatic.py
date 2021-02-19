@@ -48,6 +48,8 @@ def varyingDeconvRL(imag, psfmap, iterations, windowSize, windowStep, windowOver
     windowOverlap : integer.
         it is used to discard a portion around each tile to avoid the inclusion
         of boundary artifacts. A value around 32 should fit any problem. 
+    gpu : boolean
+        choose wether to use or not GPU (cupy) computation
 
     Returns
     -------
