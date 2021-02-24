@@ -131,6 +131,7 @@ def varyingDeconvRL_fft(imag, psfmap, iterations, windowSize, windowStep, window
 
     # split image in overlapping windows
     expanded_imag = view_as_windows(imag, (windowSize, windowSize), step=(windowStep, windowStep)).copy()
+    print(expanded_imag.shape)
 
     # interpolate the number of psf mapped in the image (do not exagerate with this)
     padlength = int((windowSize - psfmap.shape[2])/2)
