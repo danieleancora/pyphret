@@ -44,7 +44,7 @@ def deconvolutionRL(signal, kernel, deconv=None, iterations=20, verbose=True):
     return deconv
 
 
-
+# NOT WORKING, DON'T KNOW WHY
 def deconvolutionMAP(signal, kernel, deconv=None, iterations=20, verbose=True):
     epsilon = 1e-7
     
@@ -59,7 +59,7 @@ def deconvolutionMAP(signal, kernel, deconv=None, iterations=20, verbose=True):
         
         # relative blur division
         relative_blur = convDepthwise(deconv, kernel)    
-        relative_blur = 1 - signal / relative_blur
+        relative_blur = signal / relative_blur - 1 
         
         # avoid errors due to division by zero or inf
         # relative_blur[torch.isinf(relative_blur)] = 0
@@ -72,6 +72,16 @@ def deconvolutionMAP(signal, kernel, deconv=None, iterations=20, verbose=True):
     return deconv
 
 
+# NOT WORKING, IT IS MORE DIFFICULT THAN THIS
+def deconvolutionRLblind(signal, kernel, deconv=None, iterations=(20,1,1), verbose=True):
+    signal_deconv = signal.clone().detach()
+    kernel_deconv = kernel.clone().detach()
+    
+    for iii in range(iterations[0]):
+        signal_deconv = deconvolutionRL(signal_deconv, kernel_deconv, deconv=None, iterations=iterations[1], verbose=verbose)
+        kernel_deconv = deconvolutionRL(kernel_deconv, signal_deconv, deconv=None, iterations=iterations[2], verbose=verbose)
+   
+    return signal_deconv, kernel_deconv
 
 
 # %% ANISOPLANATIC DECONVOLUTION
@@ -187,3 +197,34 @@ def varyingDeconvRL(imag, psfmap, iterations, windowSize, windowStep, windowOver
     # imag_rebuild[np.isnan(imag_rebuild)] = 0
 
     return imag_rebuild
+
+
+# %% DEAUTOCORRELATION
+def deautocorrelationSS(signal, deconv=None, iterations=20, verbose=True):
+    epsilon = 1e-7
+    
+    # set starting prior to the actual image
+    if deconv is None: 
+        deconv = signal.clone().detach()
+
+    # iterative richardson lucy
+    for iteration in range(iterations):
+        if verbose==True:
+            print('iteration = ' + str(iteration))
+        
+        # relative blur division
+        relative_blur = xcorrDepthwise(deconv, deconv)    
+        relative_blur = signal / relative_blur
+        
+        # avoid errors due to division by zero or inf
+        relative_blur[torch.isinf(relative_blur)] = epsilon
+        relative_blur[torch.isnan(relative_blur)] = 0
+        # relative_blur = torch.abs(relative_blur)
+
+        # multiplicative update 
+        deconv *= (xcorrDepthwise(relative_blur, deconv) + convDepthwise(relative_blur, deconv))
+        
+    return deconv
+
+
+

@@ -16,15 +16,61 @@ from skimage.util import view_as_windows
 from pyphret.torch.functional import xcorrDepthwise, convDepthwise
 
 
-def tile(imag, windowSize, windowStep, windowOverlap):
-    expanded_imag = view_as_windows(imag, (windowSize, windowSize), step=(windowStep, windowStep)).copy()
-    return expanded_imag
+# %% CREATE TILED VIEWS WITHIN A 2D IMAGE AND INVERSE
+def tile(image, windowSize, windowStep, windowOverlap):
+    """
+    This function starts from a 2D image and select tile-regions that are 
+    mapped on a 2D grid, forming a 4D array. The first two dimensions map each 
+    window on a spatial grid, the last two dimensions are the spatial 
+    directions of each tile.
+
+    Parameters
+    ----------
+    image : 2D numpy array
+        original image from which we want to extract tiled views.
+    windowSize : int
+        dimension of each squared tile.
+    windowStep : int
+        distance between one tile and the next one.
+    windowOverlap : int
+        not used here, eventually useful.
+
+    Returns
+    -------
+    expanded_imag : 4D numpy array
+        tiled image.
+
+    """
+    expanded_image = view_as_windows(image, (windowSize, windowSize), step=(windowStep, windowStep)).copy()
+    return expanded_image
 
 
-def untile(expanded_deconv, windowSize, windowStep, windowOverlap):
+def untile(expanded_image, windowSize, windowStep, windowOverlap):
+    """
+    Inverse tile function, thus from a tiled view the functions reconstruct a
+    2D image. For the moment, overlapping regions are simply averaged keeping 
+    track of a contribution mask.
+
+    Parameters
+    ----------
+    expanded_imag : 4D numpy array
+        tiled image.
+    windowSize : int
+        dimension of each squared tile.
+    windowStep : int
+        distance between one tile and the next one.
+    windowOverlap : int
+        not used here, eventually useful.
+
+    Returns
+    -------
+    imag_rebuild : 2D numpy array
+        original image from which we want to extract tiled views.
+
+    """
     # calculate the final shape of the image
-    iiisize = (expanded_deconv.shape[0]-1)*windowStep + windowSize
-    jjjsize = (expanded_deconv.shape[1]-1)*windowStep + windowSize
+    iiisize = (expanded_image.shape[0]-1)*windowStep + windowSize
+    jjjsize = (expanded_image.shape[1]-1)*windowStep + windowSize
 
     # print(iiisize), print(jjjsize)
     
@@ -37,9 +83,9 @@ def untile(expanded_deconv, windowSize, windowStep, windowOverlap):
     mask = np.ones((windowSize,windowSize))
     
     # recompose the image by tiling
-    for i in range(expanded_deconv.shape[0]):
-        for j in range(expanded_deconv.shape[1]):
-            imag_chunk = expanded_deconv[i,j,:,:]
+    for i in range(expanded_image.shape[0]):
+        for j in range(expanded_image.shape[1]):
+            imag_chunk = expanded_image[i,j,:,:]
 
             # difficult to read but important, places back the deconvolved tiles in the appropriate mask
             imag_rebuild[i*windowStep+windowOverlap:i*windowStep+windowSize-windowOverlap, j*windowStep+windowOverlap:j*windowStep+windowSize-windowOverlap] += imag_chunk[windowOverlap:-windowOverlap,windowOverlap:-windowOverlap]

@@ -13,7 +13,6 @@ import numpy as np
 import torch.nn.functional as F
 
 
-
 # %% FUNCTION DEFINITION
 def xcorrDepthwise(signal, kernel):
     """
@@ -51,6 +50,22 @@ def xcorrDepthwise(signal, kernel):
 
 
 def convDepthwise(signal, kernel):
+    """
+    Same as above, but with flipped kernel.
+
+    Parameters
+    ----------
+    signal : torch 3D Tensor
+        the stack of 2D images that we want to convolve depthwise.
+    kernel : torch 3D Tensor
+        depthwise filter. It has to have odd shape.
+
+    Returns
+    -------
+    TYPE
+        A call to the previous function with appropriate kernel.
+
+    """
     return xcorrDepthwise(signal, kernel.flip([1, 2]))
 
 
