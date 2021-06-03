@@ -64,6 +64,7 @@ def _denoise_tv_chambolle_nd(image, weight=0.1, eps=2.e-4, n_iter_max=200):
     d = xp.zeros_like(image)
     i = 0
     while i < n_iter_max:
+        print(i)
         if i > 0:
             # d will be the (negative) divergence of p
             d = -p.sum(0)

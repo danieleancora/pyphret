@@ -11,6 +11,7 @@ import torch.nn.functional as F
 import numpy as np
 from scipy import ndimage
 from skimage.util import view_as_windows
+import matplotlib.pyplot as plt
 
 from pyphret.torch.tiling import tile, untile
 from pyphret.torch.functional import xcorrDepthwise, convDepthwise
@@ -19,6 +20,7 @@ from pyphret.torch.functional import xcorrDepthwise, convDepthwise
 # %% ISOPLANATIC DECONVOLUTION
 def deconvolutionRL(signal, kernel, deconv=None, iterations=20, verbose=True):
     epsilon = 1e-7
+    distance = []
     
     # set starting prior to the actual image
     if deconv is None: 
@@ -30,7 +32,10 @@ def deconvolutionRL(signal, kernel, deconv=None, iterations=20, verbose=True):
             print('iteration = ' + str(iteration))
         
         # relative blur division
-        relative_blur = convDepthwise(deconv, kernel)    
+        relative_blur = convDepthwise(deconv, kernel)
+        
+        distance.append(torch.linalg.norm(relative_blur/relative_blur.mean()-deconv/deconv.mean()).cpu().numpy())
+        
         relative_blur = signal / relative_blur
         
         # avoid errors due to division by zero or inf
@@ -40,7 +45,10 @@ def deconvolutionRL(signal, kernel, deconv=None, iterations=20, verbose=True):
 
         # multiplicative update 
         deconv *= xcorrDepthwise(relative_blur, kernel)
-        
+    
+    plt.figure()
+    plt.plot(distance)
+
     return deconv
 
 

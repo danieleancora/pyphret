@@ -106,3 +106,11 @@ def untile(expanded_image, windowSize, windowStep, windowOverlap):
     return imag_rebuild
 
 
+
+def adddimension(image):
+    return np.expand_dims(image, axis=0)
+
+
+def removedimension(image):
+    return np.squeeze(image)
+
