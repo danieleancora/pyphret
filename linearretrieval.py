@@ -34,8 +34,8 @@ def linearGerchbergSaxton(x_cpl, y_mod, power=1, iterations=10000):
     Pinv = xp.linalg.pinv(P)
         
     # make sure all the variables are cast to complex
-    P = xp.complex64(P)
-    Pinv = xp.complex64(Pinv)
+    # P = xp.complex64(P)
+    # Pinv = xp.complex64(Pinv)
     
     # move measures to torch tensor
     Y_mod = y_mod.T
