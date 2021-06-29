@@ -14,6 +14,7 @@ import time
 import numpy as np
 from scipy import ndimage
 import pyphret.backend as pyb
+import scipy.fft
 
 ######### import cupy only if installed #########
 from importlib import util
