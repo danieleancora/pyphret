@@ -20,7 +20,7 @@ if cupy_enabled:
 ######### ----------------------------- #########
 
 import pyphret.backend as pyb
-import pyphret.cusignal.convolution as pyconv
+# import pyphret.cusignal.convolution as pyconv
 from pyphret.functions import my_convolution, my_correlation, my_convcorr, my_convcorr_sqfft, my_correlation_withfft, axisflip, snrIntensity_db
 
 
