@@ -126,9 +126,10 @@ def ensambled_autocorrelation(pattern, sigma = None, mask = None, threshold = No
                             np.conj(np.fft.rfft2(expanded_input_pad, axes=(2,3))) * 
                             np.fft.rfft2(expanded_input_pad, axes=(2,3)), axes=(2,3))
 
-    enscorr = np.real(np.fft.fftshift(np.mean(expanded_corr, axis=(0,1))))
+    # enscorr = np.real(np.fft.fftshift(np.mean(expanded_corr, axis=(0,1))))
     # SOFI TRY:
     # enscorr = np.real(np.fft.fftshift(np.std(expanded_corr, axis=(0,1))))
+    enscorr = np.real(np.fft.fftshift(np.median(expanded_corr, axis=(0,1))))
 
     #enscorr = enscorr - np.min(enscorr)
 

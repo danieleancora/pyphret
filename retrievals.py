@@ -10,6 +10,7 @@ import numpy as np
 import pyphret.functions as pf
 import matplotlib.pyplot as plt
 from pyphret.functions import snrIntensity_db
+from pyphret.backend import get_array_module
 
 ######### import cupy only if installed #########
 from importlib import util
@@ -31,7 +32,7 @@ def algorithmStatus(t, k, steps):
 
 
 def fourierDistance(fftmagnitude, g_k):
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
     normalization = 1 / (fftmagnitude.size * xp.linalg.norm(fftmagnitude))
     gp_k = xp.fft.rfftn(g_k)                     # alias for G_k
     gp_k = xp.abs(gp_k)                        # alias for Phi_k
@@ -42,7 +43,7 @@ def fourierDistance(fftmagnitude, g_k):
 
 
 def generateInitialGuess(fftmagnitude, rec_prior, phase_prior, attempts=10):
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
 
     # random phase if prior is None, otherwise start with the prior Fourier
     if (rec_prior is None) and (phase_prior is None):
@@ -143,7 +144,7 @@ def generateMask(g_k, masked, size, xp = None):
 # This is a pedagogical implementation for the error reduction protocol
 def ER_pedantic(fftmagnitude, g_k, mask, steps):
     print('Running Phase-Retrieval iterations using a pedantic implementation of Error Reduction')
-    xp = cp.get_array_module(fftmagnitude)      # to save agnosticity of the code
+    xp = get_array_module(fftmagnitude)      # to save agnosticity of the code
     t = time.time()    
     for k in range(0,steps):
         t = algorithmStatus(t, k, steps)
@@ -169,7 +170,7 @@ def ER_pedantic(fftmagnitude, g_k, mask, steps):
 # ONGOING DEVELOPMENT - supports volumes up to 1024x1024x512 double
 def ER(fftmagnitude, g_k, mask, steps):
     print('Running Phase-Retrieval iterations using Error Reduction method')
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
     t = time.time()    
     for k in range(0,steps):
         t = algorithmStatus(t, k, steps)
@@ -190,7 +191,7 @@ def ER(fftmagnitude, g_k, mask, steps):
 # ONGOING DEVELOPMENT - it requires more memory than ER implementation
 def HIO(fftmagnitude, g_k, mask, beta, steps, measure=False):
     print('Running Phase-Retrieval iterations using Hybrid Input-Output method')
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
     t = time.time()    
     error = None
 
@@ -226,7 +227,7 @@ def HIO(fftmagnitude, g_k, mask, beta, steps, measure=False):
 # ONGOING DEVELOPMENT - it requires more memory than ER implementation
 def HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode, measure=False, parameters=[100, 30, 1.5, 0.9, 1]):
     print('Running Phase-Retrieval iterations using Hybrid Input-Output method with options')
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
     t = time.time()    
     error = xp.zeros(steps)
     normalization = 1 / (fftmagnitude.size * xp.linalg.norm(fftmagnitude))
@@ -324,7 +325,7 @@ def HIO_mode(fftmagnitude, g_k, mask, beta, steps, mode, measure=False, paramete
 # APPARENTLY WORKING - it requires more memory than ER implementation
 def OSS(fftmagnitude, g_k, mask, beta, steps):
     print('Running Phase-Retrieval iterations using Oversampling Smoothness method')
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
     t = time.time()    
     
     if xp.all(mask) == True:
@@ -364,7 +365,7 @@ def OSS(fftmagnitude, g_k, mask, beta, steps):
 
 def OO(fftmagnitude, g_k, mask, beta, steps):
     print('Running Phase-Retrieval iterations using Output-Output')
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
     t = time.time()    
     for k in range(0,steps):
         t = algorithmStatus(t, k, steps)
@@ -387,7 +388,7 @@ def OO(fftmagnitude, g_k, mask, beta, steps):
 
 def II(fftmagnitude, g_k, mask, beta, steps):
     print('Running Phase-Retrieval iterations using Input-Input')
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
     t = time.time()    
     for k in range(0,steps):
         t = algorithmStatus(t, k, steps)
@@ -411,7 +412,7 @@ def II(fftmagnitude, g_k, mask, beta, steps):
 # Experimental implementation to try to save memory working in place
 def ER_inplaceFFT(fftmagnitude, g_k, mask, steps):
     print('Running Error Reduction iterations using pedantic implementation')
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
     t = time.time()    
 
     # only cupyx.scipy supports in place fft. but I don't see memory consumption difference 
@@ -485,7 +486,7 @@ def phaseRet(fftmagnitude,
     t = time.time()    
 
     # agnostic code, xp is either numpy or cupy depending on the magnitude array module
-    xp = cp.get_array_module(fftmagnitude)
+    xp = get_array_module(fftmagnitude)
 
     # check if input values are allowed for the simulation
     assert beta > 0, 'the value for beta should be a positive'
