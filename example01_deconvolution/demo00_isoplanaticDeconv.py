@@ -27,7 +27,7 @@ croppete = 10
 psfmapname = str(number) + 'x' + str(number)
 folder = psfmapname + '//'
 
-aberration_high = 'Not Aberrated//'
+aberration_high = 'Aberrated//'
 
 filename1 = folder + aberration_high + 'psf_all' + psfmapname + '.tif'
 filename2 = folder + aberration_high + 'Snap_wide.tiff'
@@ -46,7 +46,7 @@ psfmap = psfmap[:,:,croppete:-croppete,croppete:-croppete]
 
 # visualize the PSF map
 index = 0
-plt.figure(1)
+plt.figure()
 for i in range(number):
     for j in range(number):
         index += 1;
@@ -90,11 +90,13 @@ im = torch.from_numpy(imag2).float().to(device = device)
 psf = torch.from_numpy(psf2).float().to(device = device)
 
 # this is the call for the deconvolution function
-deconv = pytr.deconvolutionRL(im, psf, deconv=None, iterations=200, verbose=True)
+deconv = pytr.deconvolutionRL(im, psf, deconv=None, iterations=20, verbose=True)
 
 # plotting the results
-plt.figure(2)
-plt.subplot(121), plt.imshow(blur)
-plt.subplot(122), plt.imshow(deconv.cpu().numpy().squeeze())
+plt.figure()
+plt.subplot(121), plt.imshow(blur), plt.title('Weakly aberrated measurement'), plt.axis('off')
+plt.subplot(122), plt.imshow(deconv.cpu().numpy().squeeze(), vmax=3), plt.title('Anisoplanatic deconvolution'), plt.axis('off')
+plt.tight_layout()
+
 
 # tiff.imsave(folder + 'notaberrated_deconvol_isoplanatic.tif', np.float32(deconv.cpu().numpy().squeeze()))

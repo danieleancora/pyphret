@@ -46,8 +46,8 @@ def deconvolutionRL(signal, kernel, deconv=None, iterations=20, verbose=True):
         # multiplicative update 
         deconv *= xcorrDepthwise(relative_blur, kernel)
     
-    plt.figure()
-    plt.plot(distance)
+    # plt.figure()
+    # plt.plot(distance)
 
     return deconv
 
