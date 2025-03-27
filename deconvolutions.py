@@ -636,6 +636,7 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, precision='flo
 
     """
     
+    # agnostic call to numpy or cupy libraries
     xp = pyb.get_array_module(correlation)
 
     # for performance evaluation
@@ -653,9 +654,11 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, precision='flo
         signal_decorr = xp.full(correlation.shape,0.5) + 0.01*xp.random.rand(*correlation.shape)
     else:
         signal_decorr = prior.copy() #+ 0.1*prior.max()*xp.random.rand(*signal.shape)
-        
-    R_0 = signal_decorr.mean()
-    signal_decorr = signal_decorr / R_0
+
+    # this is the right normalization that preserves the overall intenties
+    R_0 = signal_decorr.sum()
+
+    signal_decorr = signal_decorr / (R_0)
     relative_corr = xp.zeros_like(signal_decorr)
 
     # cast to choosen precision
@@ -691,8 +694,8 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, precision='flo
         # multiplicative update 
         # signal_decorr *= my_correlation(axisflip(signal_decorr), (relative_corr)) / R_0
         # signal_decorr *= my_correlation((relative_corr), (signal_decorr)) / R_0
-        # signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_correlation(relative_corr, axisflip(signal_decorr))) / R_0
-        signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_convolution(relative_corr, signal_decorr)) / R_0
+        # signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_correlation(relative_corr, axisflip(signal_decorr))) / (2*R_0)
+        signal_decorr *= (my_correlation(relative_corr, signal_decorr) + my_convolution(relative_corr, signal_decorr)) / (2*R_0)
         
     if clip:
         signal_decorr[signal_decorr > +1] = +1
