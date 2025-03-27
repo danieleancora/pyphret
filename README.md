@@ -12,5 +12,5 @@ https://hiphret.wordpress.com/blog/
 
 Version history:
 
-- version-2.0: the new branch from where I will start new developments. 
+- version-2.0: the new branch from where I will start new developments. This starts on 2025/03/27
 - singlePrecision-support: previous release
