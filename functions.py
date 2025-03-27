@@ -16,6 +16,8 @@ from scipy import ndimage
 import pyphret.backend as pyb
 import scipy.fft
 
+# import cupyx.scipy.signal.fftconvolve as fftconvolve
+
 ######### import cupy only if installed #########
 from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
@@ -181,9 +183,24 @@ operation on the phase is done. But it may worth a try.
 
 """
 
+# this block is better than the following one but depends on the fftconvolve function
+# def my_convolution(function1, function2, overwrite_x=False):
+#     return fftconvolve(function1, function2)
+
+# def my_correlation(function1, function2, overwrite_x=False):
+#     return fftconvolve(function1, axisflip(function2))
+
+
+
 def my_convolution(function1, function2, overwrite_x=False):
     xpx = pyb.get_array_module_scipy(function1)
     return xpx.fft.ifftshift(xpx.fft.irfftn(xpx.fft.rfftn(function1, overwrite_x=overwrite_x) * xpx.fft.rfftn(function2, overwrite_x=overwrite_x), s=function1.shape, overwrite_x=overwrite_x))
+
+def my_correlation(function1, function2, overwrite_x=False):
+    xp = pyb.get_array_module(function1)
+    xpx = pyb.get_array_module_scipy(function1)
+    return xpx.fft.ifftshift(xpx.fft.irfftn(xp.conj(xpx.fft.rfftn(function1, overwrite_x=overwrite_x)) * xpx.fft.rfftn(function2, overwrite_x=overwrite_x), s=function1.shape, overwrite_x=overwrite_x))
+
 
 def my_convolution_alongaxes(function1, function2, axes=None, overwrite_x=False):
     xp = pyb.get_array_module(function1)
@@ -195,12 +212,6 @@ def my_convolution_alongaxes(function1, function2, axes=None, overwrite_x=False)
     convolved = xpx.fft.irfftn(spectralproduct,  axes=axes, overwrite_x=overwrite_x)
     
     return xpx.fft.ifftshift(convolved, axes=axes)
-
-
-def my_correlation(function1, function2, overwrite_x=False):
-    xp = pyb.get_array_module(function1)
-    xpx = pyb.get_array_module_scipy(function1)
-    return xpx.fft.ifftshift(xpx.fft.irfftn(xp.conj(xpx.fft.rfftn(function1, overwrite_x=overwrite_x)) * xpx.fft.rfftn(function2, overwrite_x=overwrite_x), s=function1.shape, overwrite_x=overwrite_x))
 
 def my_correlation_alongaxes(function1, function2, axes=None, overwrite_x=False):
     xp = pyb.get_array_module(function1)
@@ -253,7 +264,6 @@ def my_correlationCentered(function1, function2, overwrite_x=False):
     temp = fouriermod2autocorrelation(temp, overwrite_x=overwrite_x)
     
     return temp
-
 
 def my_autocorrelation(x, overwrite_x=False):
     return my_correlation(x, x, overwrite_x=overwrite_x)
@@ -411,6 +421,11 @@ def weighted_average(x, axis=0, mode='poisson'):
 
         mean = xp.sum((w*x), axis=axis)
         # mean = mean / w_sum
+        
+    if mode =='inverse-variance':
+        w = xp.std(x, axis=axis, keepdims=True)
+        mean = xp.sum((w*x), axis=axis)
+
         
     return mean
 

@@ -672,8 +672,8 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, precision='flo
         if measure==True:
             # error[i] = xp.linalg.norm(correlation/correlation.sum()-relative_corr/relative_corr.sum())
             error[i] = snrIntensity_db(correlation/correlation.sum(), xp.abs(correlation/correlation.sum()-relative_corr/relative_corr.sum()))
-            if (error[i] < error[i-breakcheck]) and i > breakcheck:
-                break
+            # if (error[i] < error[i-breakcheck]) and i > breakcheck:
+            #     break
 
         if verbose==True and (i % 100)==0 and measure==False:
             print('Iteration ' + str(i))
