@@ -8,3 +8,9 @@ https://cordis.europa.eu/project/id/799230
 
 And a personal blog:
 https://hiphret.wordpress.com/blog/
+
+
+Version history:
+
+- version-2.0: the new branch from where I will start new developments. 
+- singlePrecision-support: previous release
