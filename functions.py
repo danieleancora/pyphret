@@ -10,11 +10,9 @@ for using real FFT protocols.
 """
 
 # LIBRARIES CALL
-import time
 import numpy as np
 from scipy import ndimage
 import pyphret.backend as pyb
-import scipy.fft
 
 # import cupyx.scipy.signal.fftconvolve as fftconvolve
 
@@ -23,6 +21,9 @@ from importlib import util
 cupy_enabled = util.find_spec("cupy") is not None
 if cupy_enabled:
     import cupy  as cp
+    # from cp import scipy.signal.fftconvolve
+    
+    import cupyx.scipy
 ######### ----------------------------- #########
 
 
@@ -183,13 +184,14 @@ operation on the phase is done. But it may worth a try.
 
 """
 
-# this block is better than the following one but depends on the fftconvolve function
+# # this block is better than the following one but depends on the fftconvolve function
 # def my_convolution(function1, function2, overwrite_x=False):
-#     return fftconvolve(function1, function2)
+#     xpx = pyb.get_array_module_scipy(function1)
+#     return xpx.signal.fftconvolve(function1, function2, mode='same')
 
 # def my_correlation(function1, function2, overwrite_x=False):
-#     return fftconvolve(function1, axisflip(function2))
-
+#     xpx = pyb.get_array_module_scipy(function1)
+#     return xpx.signal.fftconvolve(function1, axisflip(function2), mode='same')
 
 
 def my_convolution(function1, function2, overwrite_x=False):

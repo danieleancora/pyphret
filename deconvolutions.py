@@ -611,6 +611,9 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, precision='flo
     """
     De-AutoCorrelation protocol implemented by Schultz-Snyder. It needs to be 
     checked to assess the working procedure.
+    
+    This version preserves the overall intensity of the input image.
+    The multiplicative rule that we are allowed to use are 2 and 4.
 
     Parameters
     ----------
@@ -701,6 +704,7 @@ def schulzSnyder(correlation, prior=np.float32(0), iterations=10, precision='flo
         signal_decorr[signal_decorr > +1] = +1
         signal_decorr[signal_decorr < -1] = -1
 
+    # print('FANCULISSIMOOOOOO')
     print("\n\n Algorithm finished. Performance:")
     print("--- %s seconds ----" % (time.time() - start_time))
     print("--- %s sec/step ---" % ((time.time() - start_time)/iterations))
